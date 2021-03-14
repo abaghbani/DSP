@@ -1,6 +1,6 @@
 import numpy as np
 
-from Common.Constant import Constant
+from Spectrum.Constant import Constant
 C = Constant
 
 def ChannelDecimate(AdcStream):

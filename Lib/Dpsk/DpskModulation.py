@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.signal as signal
 
-from Common.Constant import Constant
+from Spectrum.Constant import Constant
 C = Constant
 
 def DpskModulation(payload):

@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.signal as signal
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Spectrum.Constant import Constant
+from Spectrum.ModemLib import ModemLib
 
 C = Constant
 myLib = ModemLib(0)

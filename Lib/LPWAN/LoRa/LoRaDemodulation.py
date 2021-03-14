@@ -2,9 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
-C = Constant
+from Spectrum.ModemLib import ModemLib
 myLib = ModemLib(0)
 
 ######################################

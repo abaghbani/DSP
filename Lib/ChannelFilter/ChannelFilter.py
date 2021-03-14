@@ -1,7 +1,7 @@
 import numpy as np
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Spectrum.Constant import Constant
+from Spectrum.ModemLib import ModemLib
 C = Constant
 myLib = ModemLib(0)
 

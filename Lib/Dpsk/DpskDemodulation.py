@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
+from Spectrum.Constant import Constant
 C = Constant
 
 def DpskDemodulation(dataI, dataQ, fs):

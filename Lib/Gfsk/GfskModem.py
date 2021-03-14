@@ -6,8 +6,8 @@ from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
 from Gfsk.GfskModulation import GfskModulation
 from Gfsk.GfskDemodulation import GfskDemodulation
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Spectrum.Constant import Constant
+from Spectrum.ModemLib import ModemLib
 
 C = Constant
 myLib = ModemLib(0)

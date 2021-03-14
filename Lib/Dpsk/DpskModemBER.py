@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Spectrum.Constant import Constant
+from Spectrum.ModemLib import ModemLib
 from Dpsk.DpskModulation import DpskModulation
 from Dpsk.DpskDemodulation import DpskDemodulation
 from RfModel.RfTransceiver import RfTransceiver
