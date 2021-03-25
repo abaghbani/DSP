@@ -26,25 +26,56 @@ def SomfyFilterBank(dataI, dataQ, fs, Bw, fMix, downSamplingRate):
 	dataFltQ = dataFltQ[::downSamplingRate]
 	fs /= downSamplingRate
 
-	myLib.fftPlot(dataFltI+1j*dataFltQ, n=1, fs=fs)
-	#myLib.specPlot(dataFltI+1j*dataFltQ, fs=fs)
+	# myLib.fftPlot(dataFltI+1j*dataFltQ, n=1, fs=fs)
+	# myLib.specPlot(dataFltI+1j*dataFltQ, fs=fs)
 	
-	return dataFltI, -dataFltQ, fs
+	return dataFltI, dataFltQ, fs
+
+def decod_manchester(data):
+	data_out = np.empty(0, dtype='int')
+	firstEdge = 0
+	for i in range(data.size):
+		if data[i] != data[i-1]:
+			if firstEdge == 0:
+				firstEdge = 1
+				period = 0.0
+				last_edge = i
+				data_out = np.append(data_out, int(data[i-1]))
+			elif period == 0 or ((i-last_edge)>(0.8*period) and (i-last_edge)<(1.2*period)):
+				period =i-last_edge
+				last_edge = i
+				data_out = np.append(data_out, int(data[i-1]))
+			elif (i-last_edge)>(1.5*period):
+				period =i-last_edge
+				data_out = np.empty(0, dtype='int')
+				print('reset detection = ',i)
+				i = 0
+	return data_out
+
 
 def SomfyDemodulation(dataI, dataQ, fs, Bw, SF):
 	
-	dI = dataI.astype('int64')
-	dQ = dataQ.astype('int64')
+	# dI = dataI.astype('int64')
+	# dQ = dataQ.astype('int64')
+	dI = dataI
+	dQ = dataQ
 	magSample = (dI*dI)+(dQ*dQ)
 	
-	dataLength = dataI.size
-	mag = np.zeros(dataLength)
-	for i in range(29, dataLength):
-		mag[i] = 10.0*np.log10(np.sum(magSample[i-29:i+1])/30)
-	
-	mag[mag < 0] = 0
-	plt.plot(magSample, '-.')
-	plt.plot(mag)
-	plt.legend(['raw', 'avg'], loc='best')
-	plt.grid()
+	plt.plot(magSample)
 	plt.show()
+
+	data = magSample[73000: 180000]
+	print('max data is: ', data.max())
+	high_threshold = int(0.5*data.max())
+	data[data<high_threshold] = 0
+	data[data!=0] = 1
+	dataout = decod_manchester(data)
+	print('data extract is: ')
+	print(dataout)
+	plt.plot(data)
+	# plt.legend(['raw', 'avg'], loc='best')
+	plt.show()
+	
+	plt.plot(dataout)
+	plt.show()
+	

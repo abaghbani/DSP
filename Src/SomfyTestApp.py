@@ -8,12 +8,12 @@ sys.path.insert(1, './Lib')
 from Spectrum.ModemLib import ModemLib
 from Spectrum.Histogram2jpeg import histogram2jpeg
 from IOs.WavFile import readWaveFile, writeWaveFile
-from Somfy.SomfyDemodulation import SomfyDemodulation
+from Somfy.SomfyDemodulation import SomfyDemodulation, SomfyFilterBank
 
 if __name__=="__main__":
 	
 	mLib = ModemLib(0)
-	fileName = '../Samples/' + 'test1_pluto.wav'
+	fileName = '../Samples/' + 'SDRSharp_20210321_171718Z_433200000Hz_IQ.wav'
 
 	print('l: Somfy demod')
 	print('S: Specgram of sampled data')
@@ -41,20 +41,16 @@ if __name__=="__main__":
 				#dataQ = dataQ[int(17.2e6):int(17.4e6)]
 				# dataI = dataI[int(5.6e6):int(6.5e6)]
 				# dataQ = dataQ[int(5.6e6):int(6.5e6)]
-				# dataI = dataI[int(0.0e6):int(12.1e4)]
-				# dataQ = dataQ[int(0.0e6):int(12.1e4)]
-				data = dataI+1j*dataQ
+				# dataI = dataI[int(16.0e6):int(17.0e6)]
+				# dataQ = dataQ[int(16.0e6):int(17.0e6)]
 				
-				mLib.fftPlot(data, n=1, fs=fs)
-				mLib.specPlot(data, fs=fs)
-				plt.plot(dataI)
-				plt.show()
+				# data = dataI+1j*dataQ
+				# mLib.fftPlot(data, n=1, fs=fs)
+				# mLib.specPlot(data, fs=fs)
 
-				#[dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=252200.0, downSamplingRate=49)
-				#LoRaDemodulation(dataI, dataQ, fs, Bw=Bw, SF=6)
-				# [dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-107.8e3, downSamplingRate=int(fs/Bw)//2)
-				# LoRaDemodulation(dataI, dataQ, fs, Bw=Bw, SF=7)
-				# SomfyDemodulation(dataI, dataQ, fs, Bw=Bw, SF=7)
+				Bw = 5.0e3
+				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-193.44e3, downSamplingRate=1)
+				SomfyDemodulation(dataI, dataQ, fs, Bw=Bw, SF=7)
 			
 			elif c == 's':
 				[fs, dataI, dataQ] = readWaveFile(fileName)

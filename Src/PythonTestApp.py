@@ -41,9 +41,6 @@ if __name__=="__main__":
 	print('Q: Wpan modem')
 	print('E: Ofdm modem')	
 	print('Z: Ofdm receiver')	
-	print('L: LoRa receiver')
-	print('M: LoRa modem')
-	print('N: read matfile')
 	print('')
 
 	while True:
@@ -65,41 +62,6 @@ if __name__=="__main__":
 				lnaGain = 4000
 				adcDataNoGain = adcData[67800+1034:80000]/lnaGain
 				rxData = OfdmReceiver(adcDataNoGain, 20)
-			
-			elif c == 'l':
-				[fs, dataI, dataQ] = readWaveFile('../Lib/Python/Samples/LoRa/SDRSharp_20160109_195047Z_869600kHz_IQ_BW21CR48SF6PL64x00.wav')
-				[dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=20800.0, fMix=251500.0, downSamplingRate=10)
-				LoRaDemodulation(dataI, dataQ, fs, Bw=20800, SF=6)
-			
-			elif c == 'm':
-				SF = 7
-				Bw = 20800.0
-				fs = (1*Bw)
-
-				payload = np.random.rand(5)*(np.exp2(SF))
-				payload = payload.astype('int')
-				baseband = LoRaModulation(payload, fLow=-Bw/2, fHigh=Bw/2, SF=SF, Fs=fs)
-				LoRaDemodulation(baseband.real, baseband.imag, fs, Bw, SF )
-			
-			elif c == 'n':
-				[dataI, dataQ, fs] = readMatFile('../Lib/Python/Samples/LoRa/pluto-capture-5.mat', 'cf_ad9361_lpc_voltage0', 'cf_ad9361_lpc_voltage1')
-				print(dataI.shape, dataQ.shape)	
-				fs = 16.0e+6
-				Bw = 125000.0
-
-				#dataI = dataI[int(1.5e6):int(2.2e6)]
-				#dataQ = dataQ[int(1.5e6):int(2.2e6)]
-				#dataI = dataI[int(17.2e6):int(17.4e6)]
-				#dataQ = dataQ[int(17.2e6):int(17.4e6)]
-				#dataI = dataI[:int(2.6e5)]
-				#dataQ = dataQ[:int(2.6e5)]
-				data = dataI+1j*dataQ
-				
-				mLib.fftPlot(data, n=1, fs=fs)
-				mLib.specPlot(data, fs=fs)
-
-				[dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=.992078e6, downSamplingRate=10) #int(fs/Bw)//2)
-				LoRaDemodulation(dataI, dataQ, fs, Bw=Bw, SF=7)
 			
 			elif c == 'x':
 				break
