@@ -174,3 +174,21 @@ def SomfyDemod(dataI, dataQ, fs):
 					data_out = np.empty(0)
 					slice_len = np.zeros(slice_len.size)
 
+def HormannDemod(dataI, dataQ, fs):
+	# digitizer
+	# magSample = (dataI*dataI)+(dataQ*dataQ)
+	data = (dataI*dataI)+(dataQ*dataQ)
+	plt.plot(data)
+	plt.grid()
+	plt.show()
+	
+	high_threshold = data.max()/10
+	data[data<high_threshold] = 0
+	data[data!=0] = 1
+		
+	plt.plot(data)
+	plt.grid()
+	plt.show()
+
+	return data
+
