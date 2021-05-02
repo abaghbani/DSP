@@ -9,6 +9,7 @@ from Spectrum.ModemLib import ModemLib
 from Spectrum.Histogram2jpeg import histogram2jpeg
 from IOs.WavFile import readWaveFile, writeWaveFile
 from Somfy.SomfyDemodulation import SomfyDemodulation, SomfyFilterBank, SomfyDemod, HormannDemod
+from ClockRecovery.ClockRecovery import *
 
 if __name__=="__main__":
 
@@ -16,6 +17,7 @@ if __name__=="__main__":
 	fileName =  '../Samples/Somfy/' + 'SDRSharp_20210407_200432Z_433200000Hz_IQ.wav'
 
 	print('R: Read sample file')
+	print('B: Remote Keylees Entry (BMW@868MHz)')
 	print('K: Somfy demod')
 	print('T: Somfy extract data')
 	print('S: Specgram of sampled data')
@@ -41,6 +43,79 @@ if __name__=="__main__":
 				data = dataI+1j*dataQ
 				mLib.fftPlot(data, n=1, fs=fs)
 				mLib.specPlot(data, fs=fs)
+
+
+			elif c == 'b':
+				fileName_local = '../Samples/RKE_BMW/' + 'SDRSharp_20210501_131211Z_868000000Hz_IQ.wav'
+				[fs, dataI, dataQ] = readWaveFile(fileName_local)
+				print('Sampling freq = ', fs)
+				print(dataI.shape, dataQ.shape)
+				
+				dataI = dataI[int(4.2e6):int(8.5e6)]
+				dataQ = dataQ[int(4.2e6):int(8.5e6)]
+
+				data = dataI+1j*dataQ
+				# mLib.fftPlot(data, n=1, fs=fs)
+				mLib.specPlot(data, fs=fs)
+
+				Bw = 100.0e3
+				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-400.0e3, downSamplingRate=1)
+				# np.save('test4_somfy', [dataI, dataQ])
+				# SomfyDemod(dataI, dataQ, fs)
+				# mLib.fftPlot(dataI+1j*dataQ, n=1, fs=fs)
+				# mLib.specPlot(dataI+1j*dataQ, fs=fs)
+
+				phase = np.arctan2(dataQ, dataI)
+				freq = np.diff(phase)
+				freq[freq>(1.0*np.pi)] -= 2*np.pi 
+				freq[freq<(-1.0*np.pi)] += 2*np.pi 
+				freq[freq>(0.5*np.pi)] -= np.pi 
+				freq[freq<(-0.5*np.pi)] += np.pi 
+				# plt.plot(phase)
+				plt.plot(freq)
+				plt.legend(['phase', 'freq'])
+				plt.show()
+
+				np.save('bmw_key_2', freq)
+			elif c == 'v':
+				
+				data = np.load('bmw_key_2.npy')
+
+				# data = data[94000:]
+				# data = data[550000:850000]
+				data = data[3550000:3900000]
+
+				bit_out, sampled_data = Early_late(data, period = 95, delta=5)
+
+				# sampled_data = np.empty(data.size)
+				# bit_out = np.empty(0, dtype='int')
+				# period = 95
+				# index = 50
+				# delta = 5
+
+				# while index<data.size:
+				# 	x = (data[index-period]>=0) == (data[index-period//2]>=0)
+				# 	y = (data[index]>=0) == (data[index-period//2]>=0)
+				# 	if x and not(y):
+				# 		index += delta
+				# 	elif not(x) and y:
+				# 		index -= delta
+					
+				# 	bit_out = np.append(bit_out, int(data[index]>=0))
+				# 	sampled_data[index] = data[index]
+
+				# 	index += period
+
+				file = open("bmw_key_out.txt","w+")
+				file.write(f'extracted data is: {[v for v in bit_out]}')
+				file.close
+
+				print([v for v in bit_out])
+				plt.plot(data)
+				plt.plot(sampled_data, '.')
+				plt.show()
+
+
 
 			elif c == 'k':
 				fileName_local = '../Samples/Somfy/' + 'SDRSharp_20210407_200432Z_433200000Hz_IQ.wav'
@@ -85,7 +160,7 @@ if __name__=="__main__":
 				data = HormannDemod(dataI, dataQ, fs)
 				np.save('Hormann_data_byMain', data)
 
-			elif c == 'b':
+			elif c == 'h':
 				# fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210415_170122Z_868000000Hz_IQ_fromCC1101.wav'
 				fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210419_202554Z_868000000Hz_IQ.wav'
 				[fs, dataI, dataQ] = readWaveFile(fileName_local)
