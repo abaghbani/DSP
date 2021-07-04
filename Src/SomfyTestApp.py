@@ -5,15 +5,15 @@ import msvcrt
 import sys
 
 sys.path.insert(1, './Lib')
-from Spectrum.ModemLib import ModemLib
-from Spectrum.Histogram2jpeg import histogram2jpeg
-from IOs.WavFile import readWaveFile, writeWaveFile
-from Somfy.SomfyDemodulation import SomfyDemodulation, SomfyFilterBank, SomfyDemod, HormannDemod
-from ClockRecovery.ClockRecovery import *
+import Spectrum.ModemLib as modemLib
+import Spectrum.Histogram2jpeg as hist
+import IOs.WavFile as wav
+import Somfy.SomfyDemodulation as somfy
+import ClockRecovery.ClockRecovery as cr
 
 if __name__=="__main__":
 
-	mLib = ModemLib(0)
+	mLib = modemLib.ModemLib(0)
 	fileName =  '../Samples/Somfy/' + 'SDRSharp_20210407_200432Z_433200000Hz_IQ.wav'
 
 	print('R: Read sample file')
@@ -34,7 +34,7 @@ if __name__=="__main__":
 			c = c.lower()
 
 			if c == 'r':
-				[fs, dataI, dataQ] = readWaveFile(fileName)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
 				dataI = dataI[int(4.0e6):int(8.5e6)]
@@ -47,7 +47,7 @@ if __name__=="__main__":
 
 			elif c == 'b':
 				fileName_local = '../Samples/RKE_BMW/' + 'SDRSharp_20210501_131211Z_868000000Hz_IQ.wav'
-				[fs, dataI, dataQ] = readWaveFile(fileName_local)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
 				
@@ -59,7 +59,7 @@ if __name__=="__main__":
 				mLib.specPlot(data, fs=fs)
 
 				Bw = 100.0e3
-				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-400.0e3, downSamplingRate=1)
+				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-400.0e3, downSamplingRate=1)
 				# np.save('test4_somfy', [dataI, dataQ])
 				# SomfyDemod(dataI, dataQ, fs)
 				# mLib.fftPlot(dataI+1j*dataQ, n=1, fs=fs)
@@ -82,29 +82,21 @@ if __name__=="__main__":
 				data = np.load('bmw_key_2.npy')
 
 				# data = data[94000:]
-				# data = data[550000:850000]
-				data = data[3550000:3900000]
+				data = data[550000:850000]
+				# data = data[3550000:3900000]
 
-				bit_out, sampled_data = Early_late(data, period = 95, delta=5)
+				## period estimation :
+				data_digi = cr.digitized(data)
+				period = cr.period_calc(data_digi)
+				file = open("period.txt","w+")
+				file.write(f'period array: {[v for v in period[0]]}')
+				file.close
+				print([v for v in period[0][:100]])
+				
+				## period
+				period = 95
 
-				# sampled_data = np.empty(data.size)
-				# bit_out = np.empty(0, dtype='int')
-				# period = 95
-				# index = 50
-				# delta = 5
-
-				# while index<data.size:
-				# 	x = (data[index-period]>=0) == (data[index-period//2]>=0)
-				# 	y = (data[index]>=0) == (data[index-period//2]>=0)
-				# 	if x and not(y):
-				# 		index += delta
-				# 	elif not(x) and y:
-				# 		index -= delta
-					
-				# 	bit_out = np.append(bit_out, int(data[index]>=0))
-				# 	sampled_data[index] = data[index]
-
-				# 	index += period
+				bit_out, sampled_data = cr.Early_late(data, period = period, delta=5)
 
 				file = open("bmw_key_out.txt","w+")
 				file.write(f'extracted data is: {[v for v in bit_out]}')
@@ -118,52 +110,56 @@ if __name__=="__main__":
 
 
 			elif c == 'k':
-				fileName_local = '../Samples/Somfy/' + 'SDRSharp_20210407_200432Z_433200000Hz_IQ.wav'
-				[fs, dataI, dataQ] = readWaveFile(fileName_local)
+				fileName_local = '../Samples/Somfy/' + 'SDRSharp_20210612_204730Z_433200000Hz_IQ.wav'
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
+
+				dataI = dataI[int(3.0e6):int(5.0e6)]
+				dataQ = dataQ[int(3.0e6):int(5.0e6)]
 
 				data = dataI+1j*dataQ
 				mLib.fftPlot(data, n=1, fs=fs)
 				mLib.specPlot(data, fs=fs)
 
 				Bw = 5.0e3
-				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-270.0e3, downSamplingRate=10)
+				# [dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-270.0e3, downSamplingRate=40)
+				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-210.0e3, downSamplingRate=40)
 				np.save('test4_somfy', [dataI, dataQ])
-				SomfyDemod(dataI, dataQ, fs)
+				somfy.SomfyDemod(dataI, dataQ, fs)
 
 			elif c == 't':
 				[dataI, dataQ] = np.load('test4_somfy.npy')
 				fs = 1.0e5
-				SomfyDemod(dataI, dataQ, fs)
+				somfy.SomfyDemod(dataI, dataQ, fs)
 
 			elif c == 'n':
 				# fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210330_201642Z_867000000Hz_IQ_fromHormannTx.wav'
-				fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210427_161313Z_868000000Hz_IQ.wav'
+				fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210612_153401Z_868000000Hz_IQ.wav'
 
 				
-				[fs, dataI, dataQ] = readWaveFile(fileName_local)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
 
 				# dataI = dataI[int(8.0e6):int(12.0e6)]
 				# dataQ = dataQ[int(8.0e6):int(12.0e6)]
-				dataI = dataI[int(0.0e6):int(7.0e6)]
-				dataQ = dataQ[int(0.0e6):int(7.0e6)]
+				dataI = dataI[int(4.0e6):int(8.0e6)]
+				dataQ = dataQ[int(4.0e6):int(8.0e6)]
 				
 				# data = dataI+1j*dataQ
 				# mLib.fftPlot(data, n=1, fs=fs)
 				# mLib.specPlot(data, fs=fs)
 
 				# [dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=20.0E3, fMix=-1.305e6, downSamplingRate=4)
-				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=20.0E3, fMix=-0.305e6, downSamplingRate=1)
-				data = HormannDemod(dataI, dataQ, fs)
+				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=20.0E3, fMix=-0.305e6, downSamplingRate=1)
+				data = somfy.HormannDemod(dataI, dataQ, fs)
 				np.save('Hormann_data_byMain', data)
 
 			elif c == 'h':
 				# fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210415_170122Z_868000000Hz_IQ_fromCC1101.wav'
 				fileName_local = '../Samples/Hormann/' + 'SDRSharp_20210419_202554Z_868000000Hz_IQ.wav'
-				[fs, dataI, dataQ] = readWaveFile(fileName_local)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
 
@@ -174,15 +170,15 @@ if __name__=="__main__":
 				# mLib.fftPlot(data, n=1, fs=fs)
 				# mLib.specPlot(data, fs=fs)
 
-				[dataI, dataQ, fs] = SomfyFilterBank(dataI, dataQ, fs, Bw=20.0e3, fMix=-0.3e6, downSamplingRate=1)
-				data = HormannDemod(dataI, dataQ, fs)
+				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=20.0e3, fMix=-0.3e6, downSamplingRate=1)
+				data = somfy.HormannDemod(dataI, dataQ, fs)
 				np.save('Hormann_data_byCC1101', data)
 
 			elif c == 'm':
 				data = np.load('Hormann_data_byMain.npy')
 				# data = np.load('Hormann_data_byCC1101.npy')
 				print(f'data size = {data.size}')
-				data = data[int(0e6):int(500e6)]
+				data = data[int(0e6):int(500e6):4]
 				last_edge = 0
 				bits = []
 				packet = []
@@ -211,15 +207,15 @@ if __name__=="__main__":
 				plt.show()
 				
 			elif c == 's':
-				[fs, dataI, dataQ] = readWaveFile(fileName)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName)
 				mLib.specPlot(dataI)
 
 			elif c == 'h':
-				[fs, dataI, dataQ] = readWaveFile(fileName)
-				histogram2jpeg(dataI)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName)
+				hist.histogram2jpeg(dataI)
 
 			elif c == 'a':
-				[fs, dataI, dataQ] = readWaveFile(fileName)
+				[fs, dataI, dataQ] = wav.readWaveFile(fileName)
 				# adcData = np.multiply(adcData, np.cos((np.arange(adcData.size)*2*np.pi*120.0e+6/240.0e+6)+0.06287))
 				mLib.fftPlot(dataI)
 

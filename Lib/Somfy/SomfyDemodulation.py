@@ -119,7 +119,7 @@ def SomfyDemod(dataI, dataQ, fs):
 	# magSample = (dataI*dataI)+(dataQ*dataQ)
 	data = (dataI*dataI)+(dataQ*dataQ)
 	
-	high_threshold = 100
+	high_threshold = int(0.1*data.max())
 	data[data<high_threshold] = 0
 	data[data!=0] = 1
 	
