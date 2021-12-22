@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Spectrum.Constant import Constant
-C = Constant
+from Gfsk.Constant import Constant as C
 
 def GfskDemodulation(dataI, dataQ, fs):
 	
@@ -31,15 +30,24 @@ def GfskDemodulation(dataI, dataQ, fs):
 	###########################
 	# mode detection
 	###########################
-	modeStream = np.zeros(0, dtype=bool)
+	modeStream = np.zeros(6, dtype=bool)
 	mode = np.zeros(dataLength, dtype=bool)
+	sliceLength = 0
+	ssLength = np.zeros(dataLength, dtype='int')
 	for i in range(1, dataLength):
+		sliceLength = sliceLength+1 if sliceLength < 14 else 0
 		if (freq[i]>=0) ^ (freq[i-1]>=0):
-			modeStream = np.append(modeStream, bool(np.abs(freq[i]-freq[i-2]) >= C.ModeRateThreshold))
-		if modeStream.size >= 6:
-			mode[i] = 1 if np.all(modeStream[-6:]==1) else 0 if np.all(modeStream[-6:]==0) else mode[i-1]
+			if(sliceLength > 5 and sliceLength < 9):
+				#modeStream = np.ones(modeStream.size)
+				modeStream = np.concatenate((True, True, True, modeStream[:-3]), axis=None)
+			else:
+				
+				modeStream = np.concatenate((bool(np.abs(freq[i]-freq[i-2]) >= C.ModeRateThreshold), modeStream[:-1]), axis=None)
+			sliceLength = 0
+		mode[i] = 1 if np.all(modeStream==1)  else 0 if np.all(modeStream==0) else mode[i-1]
+		ssLength[i] = sliceLength
 	# hacking for BER test (shift 64 samples to left to have all preamble correctly):
-	mode = np.roll(mode, -64)
+	#mode = np.roll(mode, -64)
 
 	###########################
 	# offset canselation
@@ -82,6 +90,7 @@ def GfskDemodulation(dataI, dataQ, fs):
 	##plt.plot(xcorrHalf)
 	#plt.plot(offset)
 	##plt.plot(mode)
+	##plt.plot(ssLength)
 	#plt.legend(['freq', 'avg', 'syncdet', 'xcorr', 'offset', 'mode'], loc='best')
 	#plt.grid()
 	#plt.show()
@@ -101,6 +110,13 @@ def GfskDemodulation(dataI, dataQ, fs):
 		elif mode[i]==1: ## fullrate (2Mb/s)
 			valid[i] = 1 if (clkRecCount[i]%int(SymbolCount)) == int(SymbolCount/2) else 0
 		data[i] = bool(freqSync[i]>=0)
+	
+	rxData = np.zeros(0)
+	for i in range(dataLength):
+		if valid[i] == 1:
+			rxData = np.append(rxData, '1' if data[i] else '0')
+	
+	print(rxData)
 		
 	#plt.plot(freqSync)
 	#plt.plot(offset)

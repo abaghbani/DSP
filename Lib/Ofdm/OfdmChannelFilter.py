@@ -1,11 +1,7 @@
 import numpy as np
 import scipy.signal as signal
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
-
-C = Constant
-myLib = ModemLib(0)
+from Ofdm.Constant import Constant as C
 
 def OfdmChannelFilter(adcData, channel):
 
@@ -19,7 +15,7 @@ def OfdmChannelFilter(adcData, channel):
 	# mixed_Q = Q*cos(fmix) + I*sin(fmix)
 
 	# stage 0 : Fs = 240MHz, Fmix = 58.5MHz, Fc=40.2MHz channel=1 [output = -39.5M:39.5M]
-	sigMix0 = adcData*np.exp((np.arange(adcData.size)*(-2j)*pi*(C.IfMixerFrequency+channel-0.016)/adcFS))*2
+	sigMix0 = adcData*np.exp((np.arange(adcData.size)*(-2j)*pi*(C.IfMixerFrequency+channel)/adcFS))*2
 	
 	b = signal.remez(146+1, [0, 20, 30, 120], [1,0], fs=adcFS)
 	sigFlt0 = np.convolve(b, sigMix0,'same')

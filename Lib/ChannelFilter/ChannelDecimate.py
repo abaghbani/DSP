@@ -1,7 +1,6 @@
 import numpy as np
 
-from Spectrum.Constant import Constant
-C = Constant
+from ChannelFilter.Constant import Constant as C
 
 def ChannelDecimate(AdcStream):
 
@@ -10,7 +9,7 @@ def ChannelDecimate(AdcStream):
 	data = AdcStream
 	n = np.arange(data.size)
 	bitWidth = 2**17
-	calcType = 'int32'
+	calcType = 'int64'
 
 	# input data : [-98M (2402) ... -19M (2481)],   [[2402:2481]-2260(rf_mixer)]sampling@240MHz => nyquist1 left side = -98:-19
 

@@ -2,9 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.ModemLib import ModemLib
-myLib = ModemLib(0)
-
 def payloadModulation(data, fLow, fHigh, SF, step):
 	dataOut = []
 	for i in range(data.size):
@@ -31,14 +28,13 @@ def LoRaModulation(payload, fLow, fHigh, SF, Fs):
 	freq = np.concatenate((np.zeros(50), preamble1, preamble2, preamble3, preamble4, modulatedData, np.zeros(50)), axis=None)
 	baseband = np.exp(2j*np.pi*np.cumsum(freq/Fs))
 
-	#plt.plot(freq)
-	#plt.plot(baseband.real)
-	#plt.plot(baseband.imag)
-	#plt.show()
+	plt.plot(baseband.real)
+	plt.plot(baseband.imag)
+	plt.show()
 
-	#fftPlot(baseband)
-	#plt.specgram(baseband)
-	#plt.show()
+	# fftPlot(baseband)
+	# plt.specgram(baseband)
+	# plt.show()
 
 	return baseband
 

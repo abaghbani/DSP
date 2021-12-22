@@ -1,19 +1,20 @@
 import numpy as np
 import scipy.signal as signal
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
+from ChannelFilter.Constant import Constant as C
+from Spectrum.freqPlot import fftPlot, specPlot
 
-C = Constant
-myLib = ModemLib(0)
-
-def RfTransceiver(baseband, basebandFS, basebandBW, channel, SNRdb = 25, ch_res=False):
+def RfTransceiver(baseband, channel, rate, SNRdb = 25, ch_res=False):
 	pi= np.pi
 	adcFS = C.AdcSamplingFrequency
-	
+	OverSampling = 15.0
+
+	basebandBW = 1.0 ## fix ME should be based on rate
+	basebandFS = OverSampling * basebandBW
+
 	## upsampling and flitering
 	basebandUpsampled = (basebandBW*adcFS/basebandFS)*baseband.repeat(adcFS/basebandFS)
-	b = signal.remez(140+1, [0, basebandBW, np.min([basebandFS/2-1, 20]), (adcFS/2)], [1,0], fs=adcFS)
+	b = signal.remez(140+1, [0, basebandBW, np.min([basebandFS/2-1, 20]), 120], [1,0], fs=adcFS)
 	basebandFlt = signal.lfilter(b, 1, basebandUpsampled)
 	
 	## mix to correct channel and then mix to have IF signal
@@ -34,3 +35,7 @@ def RfTransceiver(baseband, basebandFS, basebandBW, channel, SNRdb = 25, ch_res=
 		IfSignal = np.convolve(IfSignal, channelResponse)
 
 	return IfSignal.real+noiseSignal
+
+def whiteNoiseGen(size, sigma2):
+	noiseSignal = np.sqrt(sigma2/2) * (np.random.randn(size)-0.5)
+	return noiseSignal

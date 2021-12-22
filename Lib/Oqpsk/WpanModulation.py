@@ -2,8 +2,7 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
-C = Constant
+from Oqpsk.Constant import Constant as C
 
 def WpanModulation(payload):
 	pi= np.pi

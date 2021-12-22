@@ -2,19 +2,16 @@ import numpy as np
 import scipy.io as io
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
-from Odpsk.WpanModulation import WpanModulation
-from Odpsk.WpanDemodulation import WpanDemodulation
+from Oqpsk.Constant import Constant as C
+from Oqpsk.WpanModulation import WpanModulation
+from Oqpsk.WpanDemodulation import WpanDemodulation
 from RfModel.RfTransceiver import RfTransceiver
 from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
 
-C = Constant
 # wpan channel is in range 11 to 26
 wpanChannel = 12
 channel = 3+5*(wpanChannel-11)
-myLib = ModemLib(0)
 Transmitter_Enable = True
 
 ## Edr2 data = [-3, -1, 1, 3] * pi/4

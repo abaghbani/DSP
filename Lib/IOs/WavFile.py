@@ -7,6 +7,6 @@ def readWaveFile(fileName):
 	dataQ = readdata[:,1]
 	return (fs, dataI, dataQ)
 
-def writeWaveFile(data, fs, fileName):
+def writeWaveFile(fileName, data, fs):
 	wavfile.write(fileName, fs, np.array([(data.real).astype('float'), (data.imag).astype('float')]).reshape(-1,2))
 

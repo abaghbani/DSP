@@ -3,11 +3,7 @@ import scipy as scipy
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
-
-C = Constant
-myLib = ModemLib(0)
+from Ofdm.Constant import Constant as C
 
 def OfdmDemodulation(baseband, fs=20.0, DemodType = 'Direct'):
 	
@@ -166,9 +162,6 @@ def OfdmDemodulation(baseband, fs=20.0, DemodType = 'Direct'):
 			ofdmNoCp = dataStream[i][CP*12:]
 			ofdm = np.fft.fft(ofdmNoCp)
 			ofdm = np.hstack([ofdm[ofdm.size//2:], ofdm[:ofdm.size//2]])
-			plt.plot(ofdm.real, 'bo')
-			plt.plot(ofdm.imag, 'ro')
-			plt.show()
 			ofdm = ofdm[ofdm.size//2-32:ofdm.size//2+32]/12
 			# Hest = channelEstimate(ofdm)
 			# ofdm /= Hest
@@ -195,13 +188,10 @@ def OfdmDemodulation(baseband, fs=20.0, DemodType = 'Direct'):
 			corrGuard[i] = np.correlate(data.real[:16], data.real[64:])
 				
 		plt.plot(corrGuard.real)
-		plt.plot(baseband.real)
 		plt.show()
 
 		syncIndex = 0
 		syncData = baseband[syncIndex::downSamplingRate]
-		#plt.plot(baseband.real[syncIndex: syncIndex+960*3])
-		#plt.show()
 
 		# raw modulated data
 		dataStream = syncData[:(syncData.size//80)*80].reshape((-1, 80))

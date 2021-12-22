@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-def Early_late(data, period, delta=1):
+def Early_late(data, period, delta=1, plot_data=False):
 
-	sampled_data = np.empty(data.size)
+	sampled_data = np.zeros(data.size, dtype = type(data[0]))
 	bit_out = np.empty(0, dtype='int')
+	bit_index = np.empty(0, dtype='int32')
 	
-	index = int(1.5*period)
-	while index<data.size:
+	index = int(2*period)
+	while index<(data.size-delta):
 		x = (data[index-period]>=0) == (data[index-period//2]>=0)
 		y = (data[index]>=0) == (data[index-period//2]>=0)
 		if x and not(y):
@@ -17,15 +18,18 @@ def Early_late(data, period, delta=1):
 			index -= delta
 		
 		bit_out = np.append(bit_out, int(data[index]>=0))
+		bit_index = np.append(bit_index, index)
 		sampled_data[index] = data[index]
 
 		index += period
 
-	# plt.plot(data)
-	# plt.plot(sampled_data, '.')
-	# plt.show()
+	if plot_data:
+		plt.plot(data)
+		plt.plot(sampled_data)
+		plt.legend(['raw', 'sample'])
+		plt.show()
 
-	return bit_out, sampled_data
+	return bit_out, bit_index
 
 def period_calc(data):
 	

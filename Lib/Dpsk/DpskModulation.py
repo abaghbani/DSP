@@ -1,8 +1,7 @@
 import numpy as np
 import scipy.signal as signal
 
-from Spectrum.Constant import Constant
-C = Constant
+from Dpsk.Constant import Constant as C
 
 def DpskModulation(payload):
 	pi= np.pi
@@ -23,9 +22,6 @@ def DpskModulation(payload):
 	b = signal.remez(100+1, [0., .25, 0.85, 0.5*overSampling], [1,0], fs=overSampling)
 	basebandFlt = signal.lfilter(b, 1, basebandUp)
 	
-	fs = overSampling * 1.0		# phase sample rate is 1Msps
-	bw = 1.0	# baseband width is 1MHz
-
 	##################################
 	## Frequency offset and drift
 	##################################
@@ -36,4 +32,4 @@ def DpskModulation(payload):
 	frequencyOffset = offset+drift*np.linspace(0, 1, basebandFlt.size)
 	baseband = basebandFlt*np.exp (1j*2*pi*np.cumsum(frequencyOffset/overSampling))
 	
-	return baseband, fs, bw
+	return baseband

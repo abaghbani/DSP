@@ -1,16 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
+from Dpsk.Constant import Constant as C
 from Dpsk.DpskModulation import DpskModulation
 from Dpsk.DpskDemodulation import DpskDemodulation
 from RfModel.RfTransceiver import RfTransceiver
 from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
-
-C = Constant
-myLib = ModemLib(0)
 
 channel = 20
 Transmitter_Enable = True

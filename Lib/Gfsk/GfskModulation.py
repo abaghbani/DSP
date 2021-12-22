@@ -2,13 +2,12 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from Spectrum.Constant import Constant
-C = Constant
+from Gfsk.Constant import Constant as C
 
-def GfskModulation(payload, modType):
+def GfskModulation(payload):
 
 	pi= np.pi
-	overSampling = 15
+	overSampling = 15.0
 	symbolStream = np.concatenate((np.zeros(50), C.GfskPreamble if payload[0]==1 else -1*C.GfskPreamble , payload, np.zeros(100)), axis=None)
 
 	## Upsampling
@@ -38,9 +37,6 @@ def GfskModulation(payload, modType):
 	# b = signal.remez(25, [0, 1.0, 7.5, 120], [1,0], fs=240.0)
 	# basebandFlt2 = signal.lfilter(b, 1, basebandSig)
 
-	fs = overSampling * (1.0 if modType == C.GfskModulationType.Gfsk1M else 2.0)
-	bw = (1.0 if modType == C.GfskModulationType.Gfsk1M else 2.0)
-
 	##################################
 	## Frequency offset and drift
 	##################################
@@ -51,4 +47,17 @@ def GfskModulation(payload, modType):
 	frequencyOffset = offset+drift*np.linspace(0, 1, basebandFlt.size)
 	baseband = basebandFlt*np.exp (1j*2*pi*np.cumsum(frequencyOffset/overSampling))
 	
-	return baseband, fs, bw
+	return baseband
+
+def GaussianFunction(Td, BT, h, fs):
+					
+	# Td: Symbol period
+	# BT: Bandwidth.Symboltime
+	# h: modulation index
+	# fs: sampling frequency
+
+	t = np.arange(-Td/2, Td/2, 1/fs)
+	alpha = 0.833*Td / (BT*2*np.pi)
+	G = h/(2*fs) * (1/(np.sqrt(2*np.pi)*alpha)) * np.exp(-1/2 * (t/alpha)**2)
+	
+	return G

@@ -2,11 +2,7 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
-
-C = Constant
-myLib = ModemLib(0)
+from Ofdm.Constant import Constant as C
 
 def OfdmRfTransceiver(baseband, basebandFS, basebandBW, channel, SNRdb = 25, ch_res=False):
 	pi= np.pi

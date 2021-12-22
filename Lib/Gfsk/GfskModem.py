@@ -6,16 +6,12 @@ from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
 from Gfsk.GfskModulation import GfskModulation
 from Gfsk.GfskDemodulation import GfskDemodulation
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
+from Gfsk.Constant import Constant as C
 
-C = Constant
-myLib = ModemLib(0)
-
-def GfskTransmitter(channel, bit_number, modType, snr):
+def GfskTransmitter(channel, bit_number, rate, snr):
 	payload = np.array((np.random.rand(bit_number) >= 0.5)*2-1)
-	(baseband, fs, bw) = GfskModulation(payload, modType)
-	IfSig = RfTransceiver(baseband, fs, bw, channel, snr)
+	txBaseband = GfskModulation(payload)
+	IfSig = RfTransceiver(txBaseband, channel, rate, snr)
 	return payload, IfSig
 
 def GfskReceiver(adcSamples, channel, Channel_Filter):
@@ -56,8 +52,8 @@ def CompareData(txData, freq, rssi, valid, data):
 		print('Preamble is not detected')
 
 
-def GfskModem(channel, bit_number, modType, snr, channel_filter):
-	(payload, IfSig) = GfskTransmitter(channel, bit_number, modType, snr)
+def GfskModem(channel, bit_number, rate, snr, channel_filter):
+	(payload, IfSig) = GfskTransmitter(channel, bit_number, rate, snr)
 
 	adcData = IfSig.astype('int16')
 	fp = np.memmap('gfskData.bttraw', mode='w+', dtype=np.dtype('<h'), shape=(1,adcData.size))

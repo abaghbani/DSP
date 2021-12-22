@@ -1,16 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
+from Dpsk.Constant import Constant as C
 from Dpsk.DpskModulation import DpskModulation
 from Dpsk.DpskDemodulation import DpskDemodulation
 from RfModel.RfTransceiver import RfTransceiver
 from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
-
-C = Constant
-myLib = ModemLib(0)
 
 def DpskDataGen(bit_number, type):
 	if type == C.DpskModulationType.Edr2:
@@ -35,10 +31,10 @@ def DpskDataGen(bit_number, type):
 		payload[payload == 7] = 4
 	return payload
 
-def DpskTransmitter(channel, bit_number, modType, snr):
+def DpskTransmitter(channel, bit_number, modType, rate, snr):
 	payload = DpskDataGen(bit_number, modType)
-	(baseband, fs, bw) = DpskModulation(payload)
-	IfSig = RfTransceiver(baseband, fs, bw, channel, snr)
+	txBaseband = DpskModulation(payload)
+	IfSig = RfTransceiver(txBaseband, channel, rate, snr)
 	return payload, IfSig
 
 def DpskReceiver(adcSamples, channel, Channel_Filter):
@@ -80,8 +76,8 @@ def CompareData(txData, rssi, sync, valid, data, modType):
 	else:
 		print('Not enough data is received')
 
-def DpskModem(channel, bit_number, modType, snr, channel_filter):
-	(txData, IfSig) = DpskTransmitter(channel, bit_number, modType, snr)
+def DpskModem(channel, bit_number, modType, rate, snr, channel_filter):
+	(txData, IfSig) = DpskTransmitter(channel, bit_number, modType, rate, snr)
 
 	adcData = IfSig.astype('int16')
 	fp = np.memmap('dpskData.bttraw', mode='w+', dtype=np.dtype('<h'),shape=(1,adcData.size))

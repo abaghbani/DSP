@@ -2,16 +2,12 @@ import numpy as np
 import scipy.io as io
 import matplotlib.pyplot as plt
 
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Oqpsk.Constant import Constant as C
 from Oqpsk.WpanModulation import WpanModulation
 from Oqpsk.WpanDemodulation import WpanDemodulation
 from RfModel.RfTransceiver import RfTransceiver
 from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
-
-C = Constant
-myLib = ModemLib(0)
 
 def WpanChannel(channel):
 	# wpan channel is in range 11 to 26

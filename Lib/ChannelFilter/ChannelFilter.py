@@ -1,14 +1,12 @@
 import numpy as np
 
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
-C = Constant
-myLib = ModemLib(0)
+from ChannelFilter.Constant import Constant as C
+from Common.ModemLib import ModemLib as myLib
 
 def ChannelFilter(data4M, data2M, data1M, channel, type):
 
 	bitWidth = 2**17
-	calcType = 'int32'
+	calcType = 'int64'
 	
 	if type == C.ChannelFilterType.Gfsk1M:
 		chFltGfsk1M = (C.chFltGfsk1M*bitWidth).astype(calcType)
@@ -41,6 +39,6 @@ def ChannelFilter(data4M, data2M, data1M, channel, type):
 		dataLowRateQ = np.convolve(chFltDpskHdr4M,data4M[channel*2+1],'same')//bitWidth
 		fs = 30.0
 
-	dataI = myLib.cicFilter(dataLowRateI.astype(calcType))
-	dataQ = myLib.cicFilter(dataLowRateQ.astype(calcType))
+	dataI = myLib().cicFilter(dataLowRateI.astype(calcType))
+	dataQ = myLib().cicFilter(dataLowRateQ.astype(calcType))
 	return dataI, dataQ, fs

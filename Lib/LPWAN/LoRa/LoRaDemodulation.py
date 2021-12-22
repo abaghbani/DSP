@@ -2,8 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.ModemLib import ModemLib
-myLib = ModemLib(0)
+from Spectrum.freqPlot import fftPlot, specPlot
 
 ######################################
 # symb-time = (2**SF)/Bw
@@ -17,7 +16,7 @@ def LoRaFilterBank(dataI, dataQ, fs, Bw, fMix, downSamplingRate):
 	sinMix = np.sin((n*2*np.pi*fMix/fs)+0.06287)
 	dataMixI = np.multiply(dataI, cosMix) - np.multiply(dataQ, sinMix)
 	dataMixQ = np.multiply(dataQ, cosMix) + np.multiply(dataI, sinMix)
-	myLib.fftPlot(dataMixI+1j*dataMixQ, n=1, fs=fs)
+	fftPlot(dataMixI+1j*dataMixQ, n=1, fs=fs)
 
 	d = signal.firwin(301, cutoff = (1.2*Bw)/(fs/2.), window = 'blackmanharris')
 	dataFltI = np.convolve(d, dataMixI)
@@ -26,8 +25,8 @@ def LoRaFilterBank(dataI, dataQ, fs, Bw, fMix, downSamplingRate):
 	dataFltQ = dataFltQ[::downSamplingRate]
 	fs /= downSamplingRate
 
-	myLib.fftPlot(dataFltI+1j*dataFltQ, n=1, fs=fs)
-	#myLib.specPlot(dataFltI+1j*dataFltQ, fs=fs)
+	fftPlot(dataFltI+1j*dataFltQ, n=1, fs=fs)
+	#specPlot(dataFltI+1j*dataFltQ, fs=fs)
 	
 	return dataFltI, -dataFltQ, fs
 
@@ -127,7 +126,7 @@ def LoRaDemodulation(dataI, dataQ, fs, Bw, SF):
 	#plt.plot(test1.real)
 	#plt.plot(test1.imag)
 	#plt.show()
-	#myLib.fftPlot(test1, fs=fs)
+	#fftPlot(test1, fs=fs)
 	#plt.specgram(test1)
 	#plt.show()
 	

@@ -33,7 +33,7 @@ def spec_hist(data, NBIT=16, NFFT=4096, Pmin = -120.0, Pmax=3.0, aspect=1080.0/1
 	print('Cumulative Spectrum shape: {0[0]}:{0[1]} | max:{1}'.format(hst.shape, hst.max()))
 	return hst[:,1:]+1
 
-def histogram2jpeg(fileName):
+def histogram2jpeg(data):
 
 	aspect = float(1080.0/1920.0);
 	Pmax = int(3);
@@ -45,15 +45,6 @@ def histogram2jpeg(fileName):
 	
 	FS_span = Pmax - Pmin
 
-	dataTemp = np.memmap(fileName, mode='r', dtype=np.dtype('<h'))
-	# data = dataTemp[480*640:480*1660]
-	data = dataTemp
-	print('Data: {} samples'.format(data.size))
-		
-	print('Data Min/Max: ',data.min(),data.max())
-	data = data << (16 - NBPS)
-	data = data >> (16 - NBPS)
-	print('Data Min/Max: ',data.min(),data.max())
 	if data.min()   <= -2**(NBPS-1)    : print('Warning: MIN Saturated !!!!!')
 	elif data.min() <  -2**(NBPS-1)+16 : print('Note: MIN close to be saturated !!!!!')
 
@@ -102,5 +93,5 @@ def histogram2jpeg(fileName):
 	im.paste(bg, mask = mask )
 
 	im = im.convert("RGB")
-	im.save(fileName[:-7]+'.jpg', quality=95)
+	im.save('output.jpg', quality=95)
 	im.show()

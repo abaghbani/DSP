@@ -6,22 +6,19 @@ from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
 from Gfsk.GfskModulation import GfskModulation
 from Gfsk.GfskDemodulation import GfskDemodulation
-from Spectrum.Constant import Constant
-from Spectrum.ModemLib import ModemLib
+from Gfsk.Constant import Constant as C
 
-C = Constant
 channel = 20
-myLib = ModemLib(0)
 Transmitter_Enable = True
 
 payload = np.array((np.random.rand(200) >= 0.5)*2-1)
 print('transmit bit number=',payload.size)
 # print payload
 GfskSymbolStream = np.concatenate((np.zeros(50), C.GfskPreamble , payload, np.zeros(100)), axis=None)
-txBaseband = GfskModulation(C, GfskSymbolStream)
+txBaseband = GfskModulation(GfskSymbolStream)
 # IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Gfsk1MBasebandFS, basebandBW=C.Gfsk1MBasebandBW, noiseLevel=45)
 # IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Gfsk2MBasebandFS, basebandBW=C.Gfsk2MBasebandBW, noiseLevel=25)
-IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Gfsk2MBasebandFS, basebandBW=C.Gfsk2MBasebandBW, SNRdb=10)
+IfSig = RfTransceiver(txBaseband, channel, basebandFS=C.Gfsk2MBasebandFS, basebandBW=C.Gfsk2MBasebandBW, SNRdb=10)
 
 #############################################
 ## data saving as binary (Ellisys format)

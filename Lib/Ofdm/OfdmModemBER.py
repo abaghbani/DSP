@@ -6,18 +6,15 @@ from Ofdm.OfdmModulation import OfdmQamModulation
 from Ofdm.OfdmRfTransceiver import OfdmRfTransceiver
 from Ofdm.OfdmChannelFilter import OfdmChannelFilter
 from Ofdm.OfdmDemodulation import OfdmDemodulation
-from Common.Constant import Constant
-from Common.ModemLib import ModemLib
+from Ofdm.Constant import Constant as C
 
-C = Constant
 channel = 20
-myLib = ModemLib(0)
 Transmitter_Enable = True
 
 if Transmitter_Enable:
 	payload = np.random.rand(48*4*200) < 0.5
 	# payload = np.random.choice(C.QAM16_table, 48*200)
-	print 'payload size=', payload.size
+	print('payload size=', payload.size)
 	txBaseband = OfdmQamModulation(C, payload)
 	IfSig = OfdmRfTransceiver(C, txBaseband, channel, basebandFS=C.ofdmBasebandFS, basebandBW=C.ofdmBasebandBw, SNRdb=5)
 	############################################
@@ -34,11 +31,11 @@ else:
 	adcData = adcData[80700:80700+12*80*20]
 #############################################
 
-print 'ADC Data: {} samples'.format(adcData.size)
-print 'ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0])
+print( 'ADC Data: {} samples'.format(adcData.size))
+print( 'ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0]))
 rxBaseband = OfdmChannelFilter(C, adcData, channel)
-print 'base Data: {} samples'.format(rxBaseband.size)
-print 'base Data Min/Max: ',rxBaseband.min(),rxBaseband.max(), type(rxBaseband[0])
+print( 'base Data: {} samples'.format(rxBaseband.size))
+print( 'base Data Min/Max: ',rxBaseband.min(),rxBaseband.max(), type(rxBaseband[0]))
 rxData = OfdmDemodulation(C, rxBaseband)
 
 # dataLength = phase.size
