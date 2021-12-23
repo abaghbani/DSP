@@ -4,7 +4,8 @@ import msvcrt
 import sys
 
 sys.path.insert(1, './Lib')
-from Spectrum.ModemLib import ModemLib
+import Spectrum.freqPlot as fp
+# import Pluto.Pluto as pluto
 from Pluto.Pluto import Pluto
 
 if __name__=="__main__":
@@ -15,7 +16,6 @@ if __name__=="__main__":
 	print('X: Exit')
 	print('>> ')
 
-	mLib = ModemLib(0)
 	mPluto = Pluto(0)
 
 	while True:
@@ -23,10 +23,11 @@ if __name__=="__main__":
 			c = msvcrt.getch().decode("utf-8")
 			print(c)
 			c = c.lower()
+
 			if c == 'r':
 				[samples, fs] = mPluto.Read(5.0e6, 5.0e6, 868.0e6, 50.0, int(2e6))
 				print('sample freq: ', fs, 'sample size: ', samples.size, 'sample min/max: ', samples.min(), samples.max())
-				mLib.fftPlot(samples.real, n=1, fs=fs)
+				fp.fftPlot(samples.real, n=1, fs=fs)
 				np.save('testPluto', samples)
 
 			elif c == 't':
@@ -35,7 +36,7 @@ if __name__=="__main__":
 				samples *= 2**14 # The PlutoSDR expects samples to be between -2^14 and +2^14, not -1 and +1 like some SDRs
 
 				fs = mPluto.Write(10.0e6, 10.0e6, 868.0e6, -30.0, samples, 3)
-				mLib.fftPlot(samples.real, n=1, fs=fs)
+				fp.fftPlot(samples.real, n=1, fs=fs)
 
 			elif c == 'w':
 				t = np.arange(10000)/3.0e6
@@ -47,8 +48,8 @@ if __name__=="__main__":
 				samples *= 2**14 # The PlutoSDR expects samples to be between -2^14 and +2^14, not -1 and +1 like some SDRs
 
 				[rxSamples, fs] = mPluto.ReadWrite(3.0e6, 3.0e6, 868.0e6, -30.0, 50.0, samples, int(2e6))
-				mLib.fftPlot(rxSamples.real, n=1, fs=fs)
-				mLib.specPlot(rxSamples, fs=fs)
+				fp.fftPlot(rxSamples.real, n=1, fs=fs)
+				fp.specPlot(rxSamples, fs=fs)
 				#writeWaveFile(rxSamples, int(fs), 'test1.wav')
 				np.save('testPluto', rxSamples)
 
@@ -58,8 +59,8 @@ if __name__=="__main__":
 				fs = 3.0e6
 				rxSamples = np.multiply(rxSamples, np.exp((np.arange(rxSamples.size)*(-2j)*np.pi*120.0e3/fs)+0.06287))
 
-				mLib.fftPlot(rxSamples.real, n=1, fs=fs)
-				mLib.specPlot(rxSamples, fs=fs)
+				fp.fftPlot(rxSamples.real, n=1, fs=fs)
+				fp.specPlot(rxSamples, fs=fs)
 				plt.plot(rxSamples[:10000])
 				plt.show()
 

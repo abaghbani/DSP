@@ -5,17 +5,18 @@ import msvcrt
 import sys
 
 sys.path.insert(1, './Lib')
-from Spectrum.ModemLib import ModemLib
-from Spectrum.Histogram2jpeg import histogram2jpeg
+import Spectrum.freqPlot as fp
+import Spectrum.Histogram2jpeg as hp
 from IOs.WavFile import readWaveFile, writeWaveFile
 from IOs.MatFile import readMatFile
 from LPWAN.LoRa.LoRaDemodulation import LoRaDemodulation, LoRaFilterBank
 from LPWAN.LoRa.LoRaModulation import LoRaModulation
 
+
 if __name__=="__main__":
-	
-	mLib = ModemLib(0)
-	fileName = '../Samples/' + 'test1_Lora.wav'
+
+	path		= '../../traces/lora/'
+	fileName = path + 'test1_Lora.wav'
 
 	print('L: LoRa receiver')
 	print('M: LoRa modem')
@@ -61,8 +62,8 @@ if __name__=="__main__":
 				#dataQ = dataQ[:int(2.6e5)]
 				data = dataI+1j*dataQ
 				
-				mLib.fftPlot(data, n=1, fs=fs)
-				mLib.specPlot(data, fs=fs)
+				fp.fftPlot(data, n=1, fs=fs)
+				fp.specPlot(data, fs=fs)
 
 				[dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=.992078e6, downSamplingRate=10) #int(fs/Bw)//2)
 				LoRaDemodulation(dataI, dataQ, fs, Bw=Bw, SF=7)
@@ -70,16 +71,16 @@ if __name__=="__main__":
 			
 			elif c == 's':
 				[fs, dataI, dataQ] = readWaveFile(fileName)
-				mLib.specPlot(dataI)
+				fp.specPlot(dataI)
 				
 			elif c == 'h':
 				[fs, dataI, dataQ] = readWaveFile(fileName)
-				histogram2jpeg(dataI)
+				hp.histogram2jpeg(dataI)
 				
 			elif c == 'a':
 				[fs, dataI, dataQ] = readWaveFile(fileName)
 				# adcData = np.multiply(adcData, np.cos((np.arange(adcData.size)*2*np.pi*120.0e+6/240.0e+6)+0.06287))
-				mLib.fftPlot(dataI)
+				fp.fftPlot(dataI)
 				
 			elif c == 'x':
 				break

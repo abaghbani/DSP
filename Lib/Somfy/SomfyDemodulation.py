@@ -2,9 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.ModemLib import ModemLib
-myLib = ModemLib(0)
-
 ######################################
 # symb-time = (2**SF)/Bw
 # symb-rate = Bw/(2**SF)
@@ -17,7 +14,6 @@ def SomfyFilterBank(dataI, dataQ, fs, Bw, fMix, downSamplingRate):
 	sinMix = np.sin((n*2*np.pi*fMix/fs)+0.06287)
 	dataMixI = np.multiply(dataI, cosMix) - np.multiply(dataQ, sinMix)
 	dataMixQ = np.multiply(dataQ, cosMix) + np.multiply(dataI, sinMix)
-	# myLib.fftPlot(dataMixI+1j*dataMixQ, n=1, fs=fs)
 
 	d = signal.firwin(301, cutoff = (1.2*Bw)/(fs/2.), window = 'blackmanharris')
 	dataFltI = np.convolve(d, dataMixI)
@@ -25,9 +21,6 @@ def SomfyFilterBank(dataI, dataQ, fs, Bw, fMix, downSamplingRate):
 	dataFltI = dataFltI[::downSamplingRate]
 	dataFltQ = dataFltQ[::downSamplingRate]
 	fs /= downSamplingRate
-
-	# myLib.fftPlot(dataFltI+1j*dataFltQ, n=1, fs=fs)
-	# myLib.specPlot(dataFltI+1j*dataFltQ, fs=fs)
 	
 	return dataFltI, dataFltQ, fs
 

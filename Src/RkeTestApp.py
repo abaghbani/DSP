@@ -28,9 +28,8 @@ if __name__=="__main__":
 	log.getLogger('PIL').setLevel(log.INFO)
 
 	print('R: Read sample file')
-	print('K: Somfy demod')
-	print('N: Hormann demod')
-	print('M: Hormann extract data')
+	print('B: Remote Keylees Entry (BMW@868MHz)')
+	print('V: Remote Keylees Entry 2 (BMW@868MHz)')
 	
 	print('')
 	print('S: Spectogram of sampled data')
@@ -39,9 +38,9 @@ if __name__=="__main__":
 	print('X: Exit')
 	print('>> ')
 
-	path		= '../../traces/somfy/'
-	path_out	= path + '../somfy_output/'
-	filename	= path + 'SDRSharp_20210407_200432Z_433200000Hz_IQ.wav'
+	path		= '../../traces/RKE/'
+	path_out	= path + '../RKE_output/'
+	filename	= path + 'SDRSharp_20210815_142820Z_868000266Hz_IQ.wav'
 	auto_search	= False
 
 	if auto_search:
@@ -70,69 +69,70 @@ if __name__=="__main__":
 				fp.fftPlot(data, n=1, fs=fs)
 				fp.specPlot(data, fs=fs)
 
-			elif c == 'k':
-				fileName_local = path + 'SDRSharp_20210612_204730Z_433200000Hz_IQ.wav'
+
+			elif c == 'b':
+				# fileName_local = path + 'SDRSharp_20210704_200704Z_868000000Hz_IQ.wav'
+				fileName_local = path + 'RKE/' + 'SDRSharp_20210815_142820Z_868000266Hz_IQ.wav'
 				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
 				print('Sampling freq = ', fs)
 				print(dataI.shape, dataQ.shape)
-
-				dataI = dataI[int(3.0e6):int(5.0e6)]
-				dataQ = dataQ[int(3.0e6):int(5.0e6)]
+				
+				dataI = dataI[int(0.7e6):int(5.4e6)]
+				dataQ = dataQ[int(0.7e6):int(5.4e6)]
 
 				data = dataI+1j*dataQ
 				fp.fftPlot(data, n=1, fs=fs)
 				fp.specPlot(data, fs=fs)
 
-				Bw = 5.0e3
-				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-210.0e3, downSamplingRate=40)
-				# np.save(path_out+'test4_somfy', [dataI, dataQ])
-				somfy.SomfyDemod(dataI, dataQ, fs)
+				Bw = 200.0e3
+				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=Bw, fMix=-300.0e3, downSamplingRate=1)
+				# np.save('test4_somfy', [dataI, dataQ])
+				# SomfyDemod(dataI, dataQ, fs)x
+				fp.fftPlot(dataI+1j*dataQ, n=1, fs=fs)
+				# fp.specPlot(dataI+1j*dataQ, fs=fs)
 
-			elif c == 'n':
-				fileName_local = path + '../hormann/SDRSharp_20210912_172204Z_868000000Hz_IQ.wav'
-				[fs, dataI, dataQ] = wav.readWaveFile(fileName_local)
-				print('Sampling freq = ', fs)
-				print(dataI.shape, dataQ.shape)
+				phase = np.arctan2(dataQ, dataI)
+				freq = np.diff(phase)
+				freq[freq>(1.0*np.pi)] -= 2*np.pi 
+				freq[freq<(-1.0*np.pi)] += 2*np.pi 
+				freq[freq>(0.5*np.pi)] -= np.pi 
+				freq[freq<(-0.5*np.pi)] += np.pi 
+				# plt.plot(phase)
+				plt.plot(freq)
+				plt.legend(['phase', 'freq'])
+				plt.show()
 
-				dataI = dataI[int(0.0e6):int(8.0e6)]
-				dataQ = dataQ[int(0.0e6):int(8.0e6)]
+				np.save(path_out + 'bmw_key_2', freq)
+
+			elif c == 'v':
 				
-				data = dataI+1j*dataQ
-				fp.specPlot(data, fs=fs)
+				data = np.load(path_out + 'bmw_key_4.npy')
+				print('sample number =', data.size)
 
-				[dataI, dataQ, fs] = somfy.SomfyFilterBank(dataI, dataQ, fs, Bw=20.0E3, fMix=0.080e6, downSamplingRate=1)
-				data = somfy.HormannDemod(dataI, dataQ, fs)
-				np.save(path_out + 'Hormann_data', data)
+				# data = data[94000:]
+				# data = data[1000000:1850000]
+				# data = data[3550000:3900000]
 
-			elif c == 'm':
-				data = np.load('Hormann_data.npy')
-				print(f'data size = {data.size}')
-				data = data[int(0e6):int(500e6):4]
-				last_edge = 0
-				bits = []
-				packet = []
-				for i in range(1, data.size):
-					if data[i] != data[i-1]:
-						len = i-last_edge
-						print(f'state: {data[i-1]}, duration: {i-last_edge}')
-						if (len >= 400) and (len <= 650):
-							bits.append(data[i-1])
-						elif (len >= 800) and (len <= 1300):
-							bits.append(data[i-1])
-							bits.append(data[i-1])
-						elif len > 1400:
-							packet.append(np.array(bits))
-							bits = []
-						last_edge = i
+				## period estimation :
+				data_digi = cr.digitized(data)
+				period = cr.period_calc(data_digi)
+				file = open(path_out + "period.txt","w+")
+				file.write(f'period array: {[v for v in period[0]]}')
+				file.close
+				print([v for v in period[0][:100]])
 				
-				for dd in packet:
-					# print(f'packet# {i}: {packet[i]}')
-					print(f'packet# : {dd}')
-				
-				# print('data extracted: ', [hex(i) for i in data_decoded])
+				## period
+				period = 95
 
+				bit_out, sampled_data = cr.Early_late(data, period = period, delta=5)
+
+				file = open(path_out + "bmw_key_out_5.txt","w+")
+				file.write(f'extracted data is: {[v for v in bit_out]}')
+				file.close
+
+				print([v for v in bit_out])
 				plt.plot(data)
-				plt.grid()
+				plt.plot(sampled_data, '.')
 				plt.show()
 				
 			elif c == 's':
