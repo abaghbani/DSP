@@ -131,7 +131,7 @@ def WpcFskDemodulator(data, fs, type='float'):
 	#plt.grid()
 	#plt.show()
 	
-	fsk_index = indices[64::64]//10
+	fsk_index = indices[64::64]//(10 * 5) # to be sync with ASK data index, ask data has two step decimation, 10 and 5
 	period_value = np.hstack([[val]*int(val) for val in fsk_data])
 	period_value = np.append(period_value, np.repeat(period_value[-1], data.size-period_value.size))
 	
