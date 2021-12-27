@@ -5,8 +5,7 @@ import sys
 
 sys.path.insert(1, './Lib')
 import Spectrum.freqPlot as fp
-# import Pluto.Pluto as pluto
-from Pluto.Pluto import Pluto
+import Pluto.Pluto as pl
 
 if __name__=="__main__":
 	print('R: Receiving')
@@ -16,7 +15,8 @@ if __name__=="__main__":
 	print('X: Exit')
 	print('>> ')
 
-	mPluto = Pluto(0)
+	# mPluto = Pluto(0)
+	mPluto = pl(0)
 
 	while True:
 		if msvcrt.kbhit():
