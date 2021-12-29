@@ -104,16 +104,19 @@ if __name__=="__main__":
 				#filename_local = path + 'bit_data_20210818_103125.bttraw'
 				#rawData = np.fromfile(filename_local, dtype='uint16')
 				rawData = np.fromfile(filename1, dtype='uint16')
-				
+				selected_channel = 0	# channel could be 0 or 1
+
 				demodData = rawData[0::4]
 				#timestamp = rawData[1::4].astype('uint16')
 				timestamp = rawData[1::4]
 				freq = rawData[2::4].astype('uint16')
 				rssi = rawData[3::4].astype('uint16')
 
-				freq = freq[np.nonzero(demodData&0xf0 == 0x0)]
-				rssi = rssi[np.nonzero(demodData&0xf0 == 0x0)]
-				data = demodData[np.nonzero(demodData&0xf0 == 0x0)]
+				channel_mask = 0x10
+				channel_value = channel_mask if selected_channel == 1 else 0
+				freq = freq[np.nonzero((demodData&channel_mask) == channel_value)]
+				rssi = rssi[np.nonzero((demodData&channel_mask) == channel_value)]
+				data = demodData[np.nonzero((demodData&channel_mask) == channel_value)]
 
 				bit_ask = data & 1
 				bit_fsk = (data[np.nonzero(data & 8)] & 4)//4
@@ -139,12 +142,12 @@ if __name__=="__main__":
 				plt.plot(bit_fsk, '.')
 				plt.show()
 
-				WpcPacket.WpcPacket(bit_ask, ask_index, bit_fsk, fsk_index, freq, rssi, '../Samples/Wpc_output/' + 'output.json')
+				WpcPacket.WpcPacket(bit_ask, ask_index, bit_fsk, fsk_index, freq, rssi, path_out + filename1[-31:-6] + 'json')
 
 			elif c == 'd': ## final methode
 				filename_local = path + 'Wpc_adc1_19700101_010126.bttraw'
-				adcData = rawFile.readRawFile(filename_local, 13)
-				#adcData = rawFile.readRawFile(filename1, 13)
+				# adcData = rawFile.readRawFile(filename_local, 13)
+				adcData = rawFile.readRawFile(filename1, 13)
 				
 				data = adcData[int(0.0e6):int(27.0e6)]
 				print(f'data size : {data.size}')
