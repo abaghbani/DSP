@@ -1,29 +1,28 @@
 import numpy as np
+import scipy.fftpack as fft
 import matplotlib.pyplot as plt
 import msvcrt
+import logging as log
 
-from Spectrum.freqPlot import fftPlot, specPlot
-from Spectrum.Histogram2jpeg import histogram2jpeg
-from IOs.wavFile import readWaveFile, writeWaveFile
-from IOs.rawFile import readRawFile, writeRawFile
+import IOs
+import RfModel as rf
+import ChannelFilter as cf
 
-from ChannelFilter.Constant import Constant as ChFltConst
-from ChannelFilter.ChannelDecimate import ChannelDecimate
-from ChannelFilter.ChannelFilter import ChannelFilter
-from RfModel.RfTransceiver import RfTransceiver
-from Gfsk.Constant import Constant as GfskConst
-from Gfsk.GfskModulation import GfskModulation
-from Gfsk.GfskDemodulation import GfskDemodulation
-from Gfsk.GfskModem import GfskModem, GfskReceiver
-from Dpsk.DpskModem import DpskModem, DpskReceiver
-from Dpsk.Constant import Constant as DpskConst
-#from Oqpsk.WpanModem import WpanModem, WpanReceiver
-#from Ofdm.OfdmModem import OfdmModem, OfdmBaseband, OfdmReceiver
-
+import Gfsk
+import Dpsk
+import Ofdm
+import Oqpsk as Wpan
+import Spectrum as sp
 
 if __name__=="__main__":
 	
+	## level : debug - info - warning - error - critical - exception
+	log.basicConfig(format="%(levelname)s: %(message)s", level=log.INFO)
+	log.getLogger('matplotlib.font_manager').disabled = True
+	log.getLogger('PIL').setLevel(log.INFO)
+	
 	print('F: Gfsk modem')
+	print('B: Gfsk modem with RF model')
 	print('R: Gfsk receiver')
 	print('P: Dpsk modem')
 	print('T: Dpsk receiver')
@@ -38,31 +37,45 @@ if __name__=="__main__":
 	print('X: Exit')
 	print('>> ')
 
-	filename = '../Samples/Gfsk/' + 'test1.bttraw'
-	
+	path = 'D:/Documents/Samples/Gfsk/'
+	filename = path + 'test1.bin'
+
 	while True:
 		if msvcrt.kbhit():
 			c = msvcrt.getch().decode("utf-8")
 			print(c)
 			c = c.lower()
+
 			if c == 'f':
-				GfskModem(20, 200, GfskConst.GfskModulationType.Gfsk2M, 25, ChFltConst.ChannelFilterType.Gfsk2M)
+				## transmit
+				payload_len = 4
+				Fs = 15.0e6
+				payload = np.array(np.random.rand(payload_len)*256, dtype=np.uint8)
+				baseband = Gfsk.Modulation(payload, Fs)
+				#sp.fftPlot(baseband, Fs)
+
+				## Receiver
+				payload_extracted = Gfsk.Demodulation(baseband, Fs)
+
+
+			if c == 'b':
+				Gfsk.GfskModem(20, 200, Gfsk.Constant.GfskModulationType.Gfsk2M, 25, cf.Constant.ChannelFilterType.Gfsk2M)
 				
 			elif c == 'r':
-				adcData = readRawFile(filename)
-				(freq, rssi, valid, data) = GfskReceiver(adcData, 20, ChFltConst.ChannelFilterType.Gfsk2M)
+				adcData = IOs.readRawFile(filename)
+				(freq, rssi, data) = Gfsk.GfskReceiver(adcData, 58, cf.Constant.ChannelFilterType.Gfsk2M)
 				plt.plot(freq)
-				plt.plot(valid)
+				plt.plot(data)
 				plt.grid()
 				plt.show()
 			
 			elif c == 'p':
 				#DpskModem(20, 200, DpskCons.DpskModulationType.Edr2, 5, ChFltCons.ChannelFilterType.Dpsk4M.ch1M )
-				DpskModem(20, 2000, DpskConst.DpskModulationType.Edr3, 1, 15, ChFltConst.ChannelFilterType.Dpsk1M)
+				Dpsk.DpskModem(20, 2000, Dpsk.Constant.DpskModulationType.Edr3, 1, 15, cf.Constant.ChannelFilterType.Dpsk1M)
 			
 			elif c == 't':
-				adcData = readRawFile(filename)
-				(rssi, sync, valid, data) = DpskReceiver(adcData, 20, ChFltConst.ChannelFilterType.Dpsk1M)
+				adcData = IOs.readRawFile(filename)
+				(rssi, sync, valid, data) = Dpsk.DpskReceiver(adcData, 20, cf.Constant.ChannelFilterType.Dpsk1M)
 				plt.plot(data)
 				plt.plot(valid)
 				plt.plot(sync)
@@ -70,49 +83,48 @@ if __name__=="__main__":
 				plt.show()
 	
 			elif c == 'g':
-				AccessAddress = np.array(list(bin(0x71764129)[2:]), dtype='int')*2-1
-				payload = np.concatenate((np.flip(AccessAddress), np.array((np.random.rand(1600) >= 0.5)*2-1)), axis=None)
-				txBaseband = GfskModulation(payload)
+				Fs_BB = 15.0e6
+				payload = np.array(np.random.rand(200)*256, dtype=np.uint8)
+				txBaseband = Gfsk.Modulation(payload, Fs_BB)
 				txData = np.zeros(0)
+				Fs_RF = cf.Constant.AdcSamplingFrequency
+				tx_upsampled = rf.UpSampling(txBaseband, Gfsk.Constant.GfskModulationType.Gfsk1M*1.0e6, int(Fs_RF/(Fs_BB*Gfsk.Constant.GfskModulationType.Gfsk1M)), Fs_RF)
 				for i in range(40):
-					IfSig = RfTransceiver(txBaseband, i*2, C.SymboleRate.R1M, 20)
-					txData = np.append(txData, IfSig)
-				writeRawFile('gfskAllChannels.bttraw', txData.astype('int16'))
+					tx_mixer = rf.Mixer(tx_upsampled, cf.Constant().IfMixerFrequency+(i*2.0e6), 0, Fs_RF)
+					tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, 20)
+					txData = np.append(txData, tx_sig)
+				IOs.writeRawFile('gfskAllChannels.bttraw', txData.astype('int16'))
 
 			elif c == 's':
-				adcData = readRawFile(filename)
-				specPlot(adcData)
+				adcData = IOs.readRawFile(filename)
+				sp.specPlot(adcData)
 				
 			elif c == 'h':
-				adcData = readRawFile(filename)
-				histogram2jpeg(adcData)
+				adcData = IOs.readRawFile(filename)
+				sp.histogram2jpeg(adcData)
 				
 			elif c == 'a':
-				adcData = readRawFile(filename)
+				adcData = IOs.readRawFile(filename)
 				adcData = np.multiply(adcData, np.cos((np.arange(adcData.size)*2*np.pi*120.0e+6/240.0e+6)+0.06287))
-				fftPlot(adcData, fs = 240)
+				sp.fftPlot(adcData, fs = 240)
 				
-			elif c == 'q':
-				WpanModem(15, 20, 50)
-			
 			elif c == 'e':
-				OfdmModem(20, 2000, 50)
-				#OfdmBaseband(20, 2000, 50)
+				Ofdm.OfdmModem(20, 2000, 50)
 			
 			elif c == 'z':
-				adcData = readRawFile(filename)
+				adcData = IOs.readRawFile(filename)
 				lnaGain = 4000
 				adcDataNoGain = adcData[67800+1034:80000]/lnaGain
-				rxData = OfdmReceiver(adcDataNoGain, 20)
+				rxData = Ofdm.OfdmReceiver(adcDataNoGain, 20)
 			
 			elif c == 'd':
-				adcData = readRawFile(filename)
+				adcData = IOs.readRawFile(filename)
 				adcData = adcData[int(36e5):int(37e5)]
-				specPlot(adcData)
-				(data4M, data2M, data1M) = ChannelDecimate(adcData)
+				sp.specPlot(adcData)
+				(data4M, data2M, data1M) = cf.ChannelDecimate(adcData)
 				for i in range(40,50,2):
-					(dataI, dataQ, fs) = ChannelFilter(data4M, data2M, data1M, i, C.ChannelFilterType.Gfsk2M)
-					(freq, rssi, valid, data) = GfskDemodulation(dataI, dataQ, fs)
+					(dataI, dataQ, fs) = cf.ChannelFilter(data4M, data2M, data1M, i, C.ChannelFilterType.Gfsk2M)
+					(freq, rssi, valid, data) = Gfsk.Demodulation(dataI, dataQ, fs)
 
 					dataLength = freq.size
 					detected = np.zeros(dataLength, dtype=bool)

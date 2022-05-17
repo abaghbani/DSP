@@ -1,42 +1,50 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from RfModel.RfTransceiver import RfTransceiver
-from ChannelFilter.ChannelDecimate import ChannelDecimate
-from ChannelFilter.ChannelFilter import ChannelFilter
-from Gfsk.GfskModulation import GfskModulation
-from Gfsk.GfskDemodulation import GfskDemodulation
-from Gfsk.Constant import Constant as C
+import RfModel as rf
+import ChannelFilter as cf
+
+from .GfskModulation import *
+from .GfskDemodulation import *
+from .Constant import Constant as C
 
 def GfskTransmitter(channel, bit_number, rate, snr):
-	payload = np.array((np.random.rand(bit_number) >= 0.5)*2-1)
-	txBaseband = GfskModulation(payload)
-	IfSig = RfTransceiver(txBaseband, channel, rate, snr)
-	return payload, IfSig
+	payload_len = bit_number//8
+	Fs_BB = 15.0e6
+	payload = np.array(np.random.rand(payload_len)*256, dtype=np.uint8)
+	txBaseband = Modulation(payload, Fs_BB)
+	
+	Fs_RF = cf.Constant.AdcSamplingFrequency
+	tx_upsampled = rf.UpSampling(txBaseband, rate*1.0e6, int(Fs_RF/(Fs_BB*rate)), Fs_RF)
+	tx_mixer = rf.Mixer(tx_upsampled, cf.Constant().IfMixerFrequency+(channel*1.0e6), 0, Fs_RF)
+	tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, snr)
+	#IfSig = RfTransceiver(txBaseband, channel, rate, snr)
+	
+	return payload, tx_sig
 
 def GfskReceiver(adcSamples, channel, Channel_Filter):
-	(data4M, data2M, data1M) = ChannelDecimate(adcSamples)
-	(dataI, dataQ, fs) = ChannelFilter(data4M, data2M, data1M, channel, Channel_Filter)
-	(freq, rssi, valid, data) = GfskDemodulation(dataI, dataQ, fs)
-	return freq, rssi, valid, data
+	(data4M, data2M, data1M) = cf.ChannelDecimate(adcSamples)
+	(dataI, dataQ, fs) = cf.ChannelFilter(data4M, data2M, data1M, channel, Channel_Filter)
+	(freq, rssi, data) = Demodulation(dataI+1j*dataQ, fs)
+	return freq, rssi, data
 
-def CompareData(txData, freq, rssi, valid, data):
-	dataLength = freq.size
-	detected = np.zeros(dataLength, dtype=bool)
-	demodData = np.zeros(0, dtype='int')
-	for i in range(1, dataLength):
-		if valid[i] == 1:
-			demodData = np.append(demodData, data[i]*2-1) 
-
-	demodDataConv = np.convolve(demodData, C.GfskPreamble, mode='same')
-	syncPosition = np.where(np.abs(demodDataConv)==len(C.GfskPreamble))[0]
+def CompareData(txData, freq, rssi, data):
+	
+	demodData = data
+	#print(demodData)
+	GfskPreamble = np.array([-1,1]*8)
+	demodDataConv = np.convolve(demodData, GfskPreamble, mode='same')
+	syncPosition = np.where(np.abs(demodDataConv)>=(0.5*len(GfskPreamble)))[0]
 	if syncPosition.size != 0:
-		syncPosition = syncPosition[0] + len(C.GfskPreamble)/2
-		demodData = demodData[int(syncPosition):]
-		print('Preamble is detected.')
+		syncPosition = syncPosition[0]  + 32 +15
+		demodData = data[int(syncPosition):].astype(np.int8)
+		print('Preamble is detected at position = ', syncPosition)
 		print('received bit number=',demodData.size)
 		ber = 0
 		errorIndex = []
+		txData = (np.unpackbits(txData, bitorder='little').astype(np.int8))*2-1
+		print(txData)
+		print(demodData)
 		if demodData.size >= txData.size:
 			for i in range(txData.size):
 				if demodData[i] != txData[i]:
@@ -63,9 +71,9 @@ def GfskModem(channel, bit_number, rate, snr, channel_filter):
 	print('ADC Data: {} samples'.format(adcData.size))
 	print('ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0]))
 
-	(freq, rssi, valid, data) = GfskReceiver(adcData, channel, channel_filter)
+	(freq, rssi, data) = GfskReceiver(adcData, channel, channel_filter)
 
-	CompareData(payload, freq, rssi, valid, data)
+	CompareData(payload, freq, rssi, data)
 	
 	# plt.plot(adcData[5000:8000])
 	# plt.plot(freq)

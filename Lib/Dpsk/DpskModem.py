@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Dpsk.Constant import Constant as C
-from Dpsk.DpskModulation import DpskModulation
-from Dpsk.DpskDemodulation import DpskDemodulation
-from RfModel.RfTransceiver import RfTransceiver
-from ChannelFilter.ChannelDecimate import ChannelDecimate
-from ChannelFilter.ChannelFilter import ChannelFilter
+import RfModel as rf
+import ChannelFilter as cf
+
+from .DpskModulation import *
+from .DpskDemodulation import *
+from .Constant import Constant as C
 
 def DpskDataGen(bit_number, type):
 	if type == C.DpskModulationType.Edr2:
@@ -34,12 +34,17 @@ def DpskDataGen(bit_number, type):
 def DpskTransmitter(channel, bit_number, modType, rate, snr):
 	payload = DpskDataGen(bit_number, modType)
 	txBaseband = DpskModulation(payload)
-	IfSig = RfTransceiver(txBaseband, channel, rate, snr)
-	return payload, IfSig
+	Fs_BB = 15.0e6
+	Fs_RF = cf.Constant.AdcSamplingFrequency
+	tx_upsampled = rf.UpSampling(txBaseband, rate*1.0e6, int(Fs_RF/(Fs_BB*rate)), Fs_RF)
+	tx_mixer = rf.Mixer(tx_upsampled, cf.Constant().IfMixerFrequency+(channel*1.0e6), 0, Fs_RF)
+	tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, snr)
+	
+	return payload, tx_sig
 
 def DpskReceiver(adcSamples, channel, Channel_Filter):
-	(data4M, data2M, data1M) = ChannelDecimate(adcSamples)
-	(dataI, dataQ, fs) = ChannelFilter(data4M, data2M, data1M, channel, Channel_Filter)
+	(data4M, data2M, data1M) = cf.ChannelDecimate(adcSamples)
+	(dataI, dataQ, fs) = cf.ChannelFilter(data4M, data2M, data1M, channel, Channel_Filter)
 	(rssi, sync, valid, data) = DpskDemodulation(dataI, dataQ, fs)
 	return rssi, sync, valid, data
 	

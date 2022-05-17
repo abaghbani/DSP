@@ -1,7 +1,8 @@
 import numpy as np
 import scipy.signal as signal
 
-from Dpsk.Constant import Constant as C
+from .Constant import *
+C = Constant()
 
 def DpskModulation(payload):
 	pi= np.pi

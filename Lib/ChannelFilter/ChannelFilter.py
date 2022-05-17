@@ -1,7 +1,7 @@
 import numpy as np
 
-from ChannelFilter.Constant import Constant as C
-from Common.ModemLib import ModemLib as myLib
+from .Constant import Constant as C
+import Common.ModemLib as myLib
 
 def ChannelFilter(data4M, data2M, data1M, channel, type):
 

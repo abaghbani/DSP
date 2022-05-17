@@ -21,6 +21,12 @@ def MidpassFilter(n, f_low, f_high, fs):
 def RemezFilter(n, f_cut1, f_cut2, fs):
 	return signal.remez(n, np.array([0., f_cut1/(fs/2), f_cut2/(fs/2), 0.5]), [1, 1e-4])
 
+def FirHalfBandFilter(n, f_cut, fs):
+	b = signal.remez(n+1, np.array([0., f_cut/fs, 0.5-f_cut/fs, 0.5]), [1,0])
+	b[abs(b) <= 1e-4] = 0.0		# force all even coef to be exact zero (they are close to zero)
+	b[int(n/2)] = 0.5			# force center coef to be exact 0.5 (it is close to 0.5)
+	return b
+
 def MidpassCalc(b_lowpass, b_highpass):
 	assert b_lowpass.size == b_highpass.size, "Error: input parameters should have same size"
 	n = b_lowpass.size
