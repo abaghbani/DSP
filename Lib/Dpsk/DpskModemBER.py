@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Dpsk.Constant import Constant as C
-from Dpsk.DpskModulation import DpskModulation
-from Dpsk.DpskDemodulation import DpskDemodulation
-from RfModel.RfTransceiver import RfTransceiver
-from ChannelFilter.ChannelDecimate import ChannelDecimate
-from ChannelFilter.ChannelFilter import ChannelFilter
+import RfModel as rf
+import ChannelFilter as cf
+
+from .DpskModulation import DpskModulation
+from .DpskDemodulation import DpskDemodulation
+from .Constant import Constant as C
+
+C_ch_flt = cf.Constant()
 
 channel = 20
 Transmitter_Enable = True
@@ -34,8 +36,16 @@ payload[payload == 3] = 3
 print('transmit bit number=',payload.size)
 # DpskSymbolStream = np.array([0]*10+sync+payload.tolist()+[0]*10)
 DpskSymbolStream = np.concatenate((np.zeros(50), C.DpskSync, payload, np.zeros(100)), axis=None)
-txBaseband = DpskModulation(C, DpskSymbolStream)
-IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Dpsk1MBasebandFS, basebandBW=C.Dpsk1MBasebandBW, SNRdb=10)
+txBaseband = DpskModulation(DpskSymbolStream)
+
+Fs_BB = 15.0e6
+Fs_RF = cf.Constant.AdcSamplingFrequency
+
+tx_upsampled = rf.UpSampling(txBaseband, 1.0e6, int(Fs_RF/(Fs_BB*1)), Fs_RF)
+tx_mixer = rf.Mixer(tx_upsampled, cf.Constant().IfMixerFrequency+(channel*1.0e6), 0, Fs_RF)
+tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, 10)
+
+#IfSig = RfTransceiver(C_ch_flt, txBaseband, channel, basebandFS=C.Dpsk1MBasebandFS, basebandBW=C.Dpsk1MBasebandBW, SNRdb=10)
 # IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Dpsk2MBasebandFS, basebandBW=C.Dpsk2MBasebandBW, noiseLevel=100)
 # IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Dpsk4MBasebandFS, basebandBW=C.Dpsk4MBasebandBW, noiseLevel=20)
 
@@ -53,8 +63,8 @@ else:
 
 print('ADC Data: {} samples'.format(adcData.size))
 print('ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0]))
-(data4M, data2M, data1M) = ChannelDecimate(C, adcData)
-(dataI, dataQ) = ChannelFilter(C, data4M, data2M, data1M, channel, type='Dpsk4M1M')
+(data4M, data2M, data1M) = cf.ChannelDecimate(C, adcData)
+(dataI, dataQ) = cf.ChannelFilter(C, data4M, data2M, data1M, channel, type='Dpsk4M1M')
 (phase, rssi, sync, valid, data) = DpskDemodulation(C, dataI, dataQ, symboleRate=1.0)
 
 dataLength = phase.size

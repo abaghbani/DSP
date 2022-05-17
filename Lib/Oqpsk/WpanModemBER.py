@@ -2,12 +2,14 @@ import numpy as np
 import scipy.io as io
 import matplotlib.pyplot as plt
 
-from Oqpsk.Constant import Constant as C
 from Oqpsk.WpanModulation import WpanModulation
 from Oqpsk.WpanDemodulation import WpanDemodulation
 from RfModel.RfTransceiver import RfTransceiver
 from ChannelFilter.ChannelDecimate import ChannelDecimate
 from ChannelFilter.ChannelFilter import ChannelFilter
+
+from .Constant import *
+C = Constant()
 
 # wpan channel is in range 11 to 26
 wpanChannel = 12
@@ -36,7 +38,7 @@ payload[payload == 3] = 3
 
 print('transmit bit number=',payload.size)
 # DpskSymbolStream = np.concatenate((np.zeros(50), C.WpanPN0*10, np.zeros(100)), axis=None)
-DpskSymbolStream = np.concatenate((C.WpanPN0*10, np.zeros(100)), axis=None)
+DpskSymbolStream = np.concatenate((C.WpanPN0Phase*10, np.zeros(100)), axis=None)
 txBaseband = WpanModulation(C, DpskSymbolStream)
 IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.WpanBasebandFS, basebandBW=C.WpanBasebandBW, SNRdb=10)
 

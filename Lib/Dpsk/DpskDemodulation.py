@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Dpsk.Constant import Constant as C
+from .Constant import Constant as C
 
 def DpskDemodulation(dataI, dataQ, fs):
 	
@@ -104,17 +104,17 @@ def DpskDemodulation(dataI, dataQ, fs):
 			phaseData[i] = phaseSync[i]
 			data2[i] = C.TableRxPhase4DQPSK[(data[i]+16)%16]
 	
-	#plt.plot(phaseSync)
+	plt.plot(phaseSync)
 	#plt.plot(phaseDiff, '-o')
 	#plt.plot(clkRecCount)
-	##plt.plot(correction)
-	#plt.plot(syncEnable)
-	#plt.plot(valid)
-	#plt.plot(phaseData, '.')
-	#plt.plot(data2, '.')
+	#plt.plot(correction)
+	plt.plot(syncEnable)
+	plt.plot(valid)
+	plt.plot(phaseData, '.')
+	plt.plot(data2, '.')
 	#plt.legend(['phase', 'diff', 'count', 'sync', 'valid'], loc='best')
-	#plt.grid()
-	#plt.show()
+	plt.grid()
+	plt.show()
 	
 	
 	return mag, syncEnable, valid, data

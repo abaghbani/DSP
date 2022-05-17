@@ -2,14 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.freqPlot import fftPlot, specPlot
-from Filter.filterDesign import LowpassFilter, HighpassFilter, MidpassFilter
-from Wpc import WpcCommon as wpc
-
+from .WpcCommon import *
 
 def WpcPacketGenerator(payload_size):
 	raw_payload = (np.random.rand(payload_size) >= 0.5).astype('int')
-	payload = wpc.ManchesterEncoder(np.concatenate((np.ones(16), np.zeros(1), raw_payload, np.ones(2)), axis=None))
+	payload = ManchesterEncoder(np.concatenate((np.ones(16), np.zeros(1), raw_payload, np.ones(2)), axis=None))
 	payload = np.concatenate((np.zeros(5), payload, np.zeros(50)), axis=None)
 
 	return payload

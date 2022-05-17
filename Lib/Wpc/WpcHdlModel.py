@@ -2,9 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.freqPlot import fftPlot, specPlot
-from Filter.filterDesign import LowpassFilter, HighpassFilter, MidpassFilter
-from Common.ModemLib import ModemLib as myLib
+import Filter
 
 def WpcHdlEstimateFrequency(data, fs, nperseg):
 	# fsk_bit_rate = Fop / 256
@@ -68,7 +66,7 @@ def WpcHdlFrontendFiltering(data, fs, fop, downSamplingRate, mode='Averaging'):
 	filter_gain = 2**17
 	len = 101
 	fc = 20.0e3
-	b_low = LowpassFilter(len, fc, fs)
+	b_low = Filter.LowpassFilter(len, fc, fs)
 	gain = 1.0/b_low[int((len-1)/2)]
 	b_low *= 1.0/b_low[int((len-1)/2)]
 	b_low = (b_low*filter_gain).astype('int64')
@@ -146,7 +144,7 @@ def WpcHdlDemodulation(dataI, dataQ, fs, period_mr):
 	# ASK demod :
 	len = 41
 	fc = 3.0e3
-	b_low = LowpassFilter(len, fc, fs)
+	b_low = Filter.LowpassFilter(len, fc, fs)
 	gain = 1.0/b_low[int((len-1)/2)]
 	b_low *= 1.0/b_low[int((len-1)/2)]
 	filter_gain = 2**17
@@ -171,7 +169,7 @@ def WpcHdlDemodulation(dataI, dataQ, fs, period_mr):
 
 	len = 21
 	fc = 450.0
-	b_low = LowpassFilter(len, fc, fs)
+	b_low = Filter.LowpassFilter(len, fc, fs)
 	gain = 1.0/b_low[int((len-1)/2)]
 	b_low *= 1.0/b_low[int((len-1)/2)]
 	filter_gain = 2**17

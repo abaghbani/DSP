@@ -12,3 +12,4 @@ def writeRawFile(fileName, data):
 	fp = np.memmap(fileName, mode='w+', dtype=np.dtype('<h'), shape=(1, data.size))
 	fp[:] = data[:]
 
+

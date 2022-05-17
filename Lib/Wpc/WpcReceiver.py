@@ -2,148 +2,147 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 
-from Spectrum.freqPlot import fftPlot, specPlot
-from Filter.filterDesign import LowpassFilter, HighpassFilter, MidpassFilter
-from Common.ModemLib import ModemLib as myLib
+import Spectrum as sp
+import Filter as fd
 
-def WpcEstimateFrequency(data, fs, nperseg):
-	# Estimate frequency by counting zero crossings
-	
-	data_resized = np.reshape(data[:(data.size//nperseg)*nperseg], (-1, nperseg))
-	freq = np.empty(0, dtype='int')
-	for sig in data_resized:
-		# Find all indices right before a rising-edge zero crossing
-		indices = np.nonzero((sig[1:] >= 0) & (sig[:-1] < 0))[0]
-	
-		# More accurate, using linear interpolation to find intersample
-		#crossings = [i - sig[i] / (sig[i+1] - sig[i]) for i in indices]
-		crossings = indices - (sig[indices]/(sig[indices+1]-sig[indices]))
-		period = np.mean(np.diff(crossings))
-		freq = np.append(freq, 0 if period == 0 or np.isnan(period) else int(fs/period))
-	freq = np.repeat(freq, nperseg)
+def WpcFrequencyCalc(data, fs, nSamples):
+	data_resized = np.reshape(data[:(data.size//nSamples)*nSamples], (-1, nSamples))
+	freq = [(np.count_nonzero((sig[1:] >= 0) != (sig[:-1] >= 0))/2) for sig in data_resized]
+	freq = np.repeat(freq, nSamples)
 	freq = np.append(freq, np.repeat(freq[-1], data.size-freq.size))
-
-	return freq
-
-def WpcFrontendFiltering(data, fs, fop, downSamplingRate, mode='Averaging', type='float'):
-	# frequency measuring (measuring over 5000 sample @5Msps, so resolution is 1ms)
-	freq_slice = int(fs/1000)
-	if fop == 0:
-		freq = WpcEstimateFrequency(data, fs, freq_slice)
-	else:
-		freq = np.repeat(fop, data.size)
-
-	# mixer
-	f_mix = -20.0e3 * (freq//20e3)
-	
-	#f_mix = ((freq-16)//32)*32
-	#f_mix = np.zeros(data.size, dtype='float')
-	#for i in range(freq.size):
-	#	step = (freq[i]-freq[i-1])/freq_slice
-	#	for j in range(freq_slice):
-	#		f_mix[j+i*freq_slice] = freq[i-1]+ j*step
-
-	#plt.plot(np.repeat(freq, freq_slice))
-	
-	#freq = np.repeat(130e3, data.size)
-	#f_mix = np.repeat(-130e3, data.size)
-	#plt.plot(freq)
-	#plt.plot(f_mix)
-	#plt.show()
-
-	#f_mix -= 10000
-
-	n = np.arange(data.size)
-	cos_mix = np.cos(n*2*np.pi*f_mix/fs)
-	sin_mix = np.sin(n*2*np.pi*f_mix/fs)
-	#cos_sin = np.array([myLib().cordic_xy(i*2*np.pi*f_mix[i]/fs) for i in n])
-	#cos_mix = cos_sin[:,0]
-	#sin_mix = cos_sin[:,1]
-	data_mix_I = np.multiply(data, cos_mix)
-	data_mix_Q = np.multiply(data, sin_mix)
-	
-	## filtering
-	b_low = LowpassFilter(101, 20.0e3, fs)
-	data_flt_I = np.convolve(b_low, data_mix_I, mode='same')
-	data_flt_Q = np.convolve(b_low, data_mix_Q, mode='same')
-
-
-	## down sampling
-	if mode == 'SubSampling':
-		data_low_I = data_flt_I[::downSamplingRate]
-		data_low_Q = data_flt_Q[::downSamplingRate]
-	elif mode == 'Averaging':
-		data_low_I = np.sum(np.reshape(data_flt_I[:(data_flt_I.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
-		data_low_Q = np.sum(np.reshape(data_flt_Q[:(data_flt_Q.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
-	elif mode == 'Gaussian':
-		data_low_I = 0
-		data_low_Q = 0
-	freq = freq[::downSamplingRate]
-	fs_low = fs/downSamplingRate
-
-	#fftPlot(data_mix_I+1j*data_mix_Q, fs=fs)
-	#fftPlot(data_flt_I+1j*data_flt_Q, fs=fs)
-	#fftPlot(data_low_I+1j*data_low_Q, fs=fs_low)
-
-	return data_low_I+1j*data_low_Q, freq, fs_low
-
-def WpcDemodulation(data, fs):
-	
-	demod_data = np.array([myLib().cordic_rp(data.real[i], data.imag[i]) for i in range(data.size)])
-	r = demod_data[:,0]
-	beta = demod_data[:,1]
-
-	r = np.convolve(LowpassFilter(61, 3000.0, fs), r, mode='same')
-	
-	freq = np.diff(beta)
-	freq[freq>(1.0*np.pi)] -= 2*np.pi 
-	freq[freq<(-1.0*np.pi)] += 2*np.pi 
-	freq = np.convolve(LowpassFilter(21, 650.0, fs), freq, mode='same')
-	
-	#plt.plot(r)
 	plt.plot(freq)
 	plt.show()
 
-	return r, freq
+	return freq
 
-
-def WpcAskDemodulator(data, fs, type='float'):
-
-	mag = data.real*data.real + data.imag*data.imag
-	data_ask = np.convolve(LowpassFilter(61, 4000.0, fs), mag, mode='same')
-	
-	## ask data rate = 2Ksps and fsk data rate = fc/512 cycles of main sin
-	ask_sample_number = int(2*fs/2.0e3)
-	data_ask_avg = np.convolve(data_ask, np.ones(ask_sample_number), 'same')/ask_sample_number
-	data_ask_ac = data_ask-data_ask_avg
-	rssi = (data_ask_avg/1000).astype('int16')
-
-	#plt.plot(data_ask)
-	#plt.plot(data_ask_ac)
-	#plt.legend(['raw', 'ac'])
-	#plt.grid()
+def WpcDecimateRate(data, fs):
+	# fsk_bit_rate = Fop / 256
+	# downsampling_rate for reach to 64 samples for symbol : 64 = (fs/10*k) / (Fop / 256) => k' = 1024*k = 1024 * 256/(64*10) (fs * T) = 409.6 ~= 819/2
+	indices = np.nonzero((data[1:] >= 0)  != (data[:-1] >= 0))[0]
+	crossings = indices - (data[indices]/(data[indices+1]-data[indices]))
+	decimateRate = np.array([(crossings[i]-crossings[i-64]) for i in range(64, crossings.size, 64)])
+	#decimateRate = np.hstack([[val]*val for val in decimateRate])
+	#plt.plot(decimateRate)
 	#plt.show()
 
-	return data_ask_ac, rssi
+	return decimateRate
 
-def WpcFskDemodulator(data, fs, fop, type='float'):
+def WpcFrontendFiltering(data, fs, mode='Averaging', type='float'):
 
-	freq = np.diff(np.arctan2(data.imag, data.real))
-	freq[freq>(1.0*np.pi)] -= 2*np.pi 
-	freq[freq<(-1.0*np.pi)] += 2*np.pi 
+	## filtering
+	filter_gain = 2**17
+	len = 81
+	fc = 250.0e3
+	b_low = fd.LowpassFilter(len, fc, fs)
+	#b_low *= 1.0/b_low[int((len-1)/2)]
+	b_low = (b_low*filter_gain).astype(type)
+	data_flt = np.convolve(b_low, data, mode='same')
+	data_flt = (data_flt/filter_gain).astype(type)
 
-	data_fsk = np.convolve(LowpassFilter(101, 650.0, fs), freq, mode='same')
-
-	## ask data rate = 2Ksps and fsk data rate = fc/512 cycles of main sin
-	fsk_sample_number = int(np.mean(4*fs*512/fop))
-	data_fsk_avg = np.convolve(data_fsk, np.ones(fsk_sample_number), 'same')/fsk_sample_number
-	
-	data_fsk_ac = data_fsk-data_fsk_avg
-
-	#plt.plot(data_fsk)
-	#plt.plot(data_fsk_ac)
-	#plt.legend(['raw', 'ac'])
-	#plt.grid()
+	#fp.fftPlot(data, fs=fs, nperseg = 2**16)
+	#fp.fftPlot(data_flt, fs=fs, nperseg = 2**16)
+				
+	#plt.plot(data)
+	#plt.plot(data_flt)
 	#plt.show()
 
-	return data_fsk_ac
+	return data_flt
+
+def WpcAskDemodulator(data_input, fs_input, type='float', offset_cancelation = True):
+	
+	## decimation
+	downSamplingRate = 10
+	data = np.sum(np.reshape(data_input[:(data_input.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
+	fs = fs_input/downSamplingRate
+	#fp.fftPlot(data, fs=fs, nperseg = 2**16)
+	data = (data/downSamplingRate).astype(type)
+
+	## demodulation
+	#data = np.array([-dd if dd<0 else dd for dd in data])
+	data = np.abs(data)
+
+	## ASK extraction :
+	filter_gain = 2**17
+	len = 101
+	fc = 1.5e3
+	b_low = fd.LowpassFilter(len, fc, fs)
+	#b_low *= 1.0/b_low[int((len-1)/2)]
+	b_low = (b_low*filter_gain).astype(type)
+	data = np.convolve(b_low, data, mode='same')
+	data = (data/filter_gain).astype(type)
+	
+	## decimation
+	downSamplingRate = 5
+	data = np.sum(np.reshape(data[:(data.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
+	fs = fs/downSamplingRate
+	data = (data/downSamplingRate).astype(type)
+
+	len = 41
+	fc = 1.0e3
+	b_low = fd.LowpassFilter(len, fc, fs)
+	#b_low *= 1.0/b_low[int((len-1)/2)]
+	b_low = (b_low*filter_gain).astype(type)
+	ask_data = np.convolve(b_low, data, mode='same')
+	ask_data = (ask_data/filter_gain).astype(type)
+	
+	ask_sample_number = 128  ## (2*fs/2.0e3) = 100, should be 100 but because of divider is changed to 128
+	ask_data_avg = rssi = np.convolve(ask_data, np.ones(ask_sample_number), 'same')/ask_sample_number
+	ask_data_ac = ask_data-ask_data_avg
+	
+	## dc removal by a high pas filter (IIR)
+	#ask_data_ac = signal.lfilter([1, -1], [1, -0.993], ask_data[::16])
+
+	plt.plot(ask_data)
+	plt.plot(ask_data_avg)
+	plt.plot(ask_data_ac)
+	plt.grid()
+	plt.show()
+
+	if offset_cancelation:
+		return ask_data_ac, rssi
+	else:
+		return ask_data, rssi
+
+def WpcFskDemodulator(data, fs, nCycle, type='float', offset_cancelation = True):
+	
+	## demodulation
+	cycle_number = nCycle*2
+	indices = np.nonzero((data[1:] >= 0)  != (data[:-1] >= 0))[0]
+
+	#new_level_detected = 0
+	#limit_hi = 500 ##0.5*data.max()
+	#limit_lo = -500 ##0.5*data.min()
+	#indices = np.empty(0, dtype='int')
+	#for i in range(data.size):
+	#	if data[i] > limit_hi and new_level_detected == 0:
+	#		new_level_detected = 1
+	#		indices = np.append(indices, i)
+	#	elif data[i] < limit_lo and new_level_detected == 1:
+	#		new_level_detected = 0
+	#		indices = np.append(indices, i)
+
+	crossings = indices - (data[indices]/(data[indices+1]-data[indices]))
+	fsk_data = np.array([(crossings[i]-crossings[i-(2*cycle_number)]) for i in range(2*cycle_number, crossings.size, 2*cycle_number)])
+	fsk_data[fsk_data>10000] = 10000
+
+	## dc removal
+	fsk_sample_number = 4*(256//cycle_number)
+	fsk_data_avg = np.convolve(fsk_data, np.ones(fsk_sample_number), 'same')/fsk_sample_number
+	fsk_data_ac = fsk_data-fsk_data_avg
+	
+	plt.plot(fsk_data)
+	plt.plot(fsk_data_avg)
+	plt.plot(fsk_data_ac)
+	plt.grid()
+	plt.show()
+	
+	fsk_index = indices[cycle_number::cycle_number]//(10 * 5) # to be sync with ASK data index, ask data has two step decimation, 10 and 5
+	period_value = np.hstack([[val]*int(val) for val in fsk_data])
+	period_value = np.append(period_value, np.repeat(period_value[-1], data.size-period_value.size))
+	
+	fsk_data_ac = np.hstack([[val]*2 for val in fsk_data_ac])
+
+	if offset_cancelation:
+		return fsk_data_ac, fsk_index, period_value
+	else:
+		return fsk_data, fsk_index, period_value

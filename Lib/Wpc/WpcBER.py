@@ -3,14 +3,17 @@ import matplotlib.pyplot as plt
 import scipy.signal as signal
 import logging as log
 
-from Spectrum import freqPlot as fp
-from RfModel import RfTransceiver as rfTrx
-from ClockRecovery import ClockRecovery as cr
+import Spectrum as sp
+import RfModel as rf
+import ClockRecovery as cr
 
-from Wpc import WpcTransmitter as tx
-from Wpc import WpcReceiver as demod_shift
-from Wpc import WpcReceiverNew as demod
-
+from .WpcTransmitter import *
+from .WpcReceiver import *
+from .WpcPacket import *
+from .WpcCommon import *
+from .WpcBER import *
+from .WpcHdlModel import *
+import WpcReceiverShift as demod_shift
 
 def CompareAskData(txData, rxData, len):
 	start_index_rx = 0
@@ -65,20 +68,20 @@ def AskBERtest(packet_len, fop, SNRdb, model='new'):
 	bit_rate = 2.0e3
 	amplitude = 1.0
 
-	txData = tx.WpcPacketGenerator(packet_len)
-	sig = tx.WpcModulation(txData, bit_rate*2, 'ask', modulation_index, amplitude, fop, fs)
+	txData = WpcPacketGenerator(packet_len)
+	sig = WpcModulation(txData, bit_rate*2, 'ask', modulation_index, amplitude, fop, fs)
 	
 	signal_power = np.mean(abs(sig**2))
 	sigma2 = signal_power * 10**(-SNRdb/10)
 	print (f'RX Signal power: {signal_power:.4f}, Noise power: {sigma2:.4f}   ===   SNR: {SNRdb} dB')
 	noise_delay = int(39*fs/(2*bit_rate))
-	sig[noise_delay:] += rfTrx.whiteNoiseGen(sig.size-noise_delay, sigma2)
+	sig[noise_delay:] += rf.whiteNoiseGen(sig.size-noise_delay, sigma2)
 
 	data_format = 'float64'
 	sig = (sig*(2**12)).astype(data_format)
 	if model == 'new':
-		data_flt = demod.WpcFrontendFiltering(sig, fs, 10, type=data_format)
-		ask_data, rssi = demod.WpcAskDemodulator(data_flt, fs, type=data_format)
+		data_flt = WpcFrontendFiltering(sig, fs, 10, type=data_format)
+		ask_data, rssi = WpcAskDemodulator(data_flt, fs, type=data_format)
 	elif model == 'shift':
 		data_flt, temp, fs_low  = demod_shift.WpcFrontendFiltering(sig, fs, fop, 10, type=data_format)
 		ask_data, rssi = demod_shift.WpcAskDemodulator(data_flt, fs_low, type=data_format)
@@ -99,20 +102,20 @@ def FskBERtest(packet_len, fop, SNRdb, model='new'):
 	bit_rate = fop/512
 	amplitude = 1.0
 
-	txData = tx.WpcPacketGenerator(packet_len)
-	sig = tx.WpcModulation(txData, bit_rate*2, 'fsk', modulation_index, amplitude, fop, fs)
+	txData = WpcPacketGenerator(packet_len)
+	sig = WpcModulation(txData, bit_rate*2, 'fsk', modulation_index, amplitude, fop, fs)
 								
 	signal_power = np.mean(abs(sig**2))
 	sigma2 = signal_power * 10**(-SNRdb/10)
 	print (f'RX Signal power: {signal_power:.4f}, Noise power: {sigma2:.4f}   ===   SNR: {SNRdb} dB')
 	noise_delay = int(39*fs/(2*bit_rate))
-	sig[noise_delay:] += rfTrx.whiteNoiseGen(sig.size-noise_delay, sigma2)
+	sig[noise_delay:] += rf.whiteNoiseGen(sig.size-noise_delay, sigma2)
 
 	data_format = 'float64'
 	sig = (sig*(2**12)).astype(data_format)
 	if model == 'new':
-		data_flt = demod.WpcFrontendFiltering(sig, fs, 10, type=data_format)
-		fsk_data, fsk_index, period =  demod.WpcFskDemodulator(data_flt, fs, type=data_format)
+		data_flt = WpcFrontendFiltering(sig, fs, 10, type=data_format)
+		fsk_data, fsk_index, period =  WpcFskDemodulator(data_flt, fs, type=data_format)
 		rxData, rxIndex_fsk = cr.Early_late(fsk_data, 8, 1)
 	elif model == 'shift':
 		data_flt, temp, fs_low  = demod_shift.WpcFrontendFiltering(sig, fs, fop, 10, type=data_format)

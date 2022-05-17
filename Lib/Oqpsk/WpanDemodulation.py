@@ -1,81 +1,89 @@
 import numpy as np
-import scipy.signal as signal
 import matplotlib.pyplot as plt
 
-def WpanDemodulation(dataI, dataQ, fs=30, symboleRate=1.0):
-	
-	dataLength = dataI.size
-	SymbolCount = float(fs/symboleRate)
-	# print SymbolCount
-	
-	# dataI = np.roll(dataI, 15)
-	# dataQ = np.roll(dataQ, -15)
-	# dataI = signal.lfilter(np.array([0.5, 0.5]), np.array([1]), dataI)
-	# dataQ = signal.lfilter(np.array([0.5, 0.5]), np.array([1]), dataQ)
-	# rangestart = 800
-	# rangeend = 1100
-	# plt.plot(dataI[rangestart:rangeend], dataQ[rangestart:rangeend])
-	# # dataI -= 500
-	# # dataQ -= 500
-	# # plt.plot(dataQ)
-	# plt.grid()
-	# plt.show()
-	# return 0
+import ClockRecovery as cr
+import Spectrum as sp
 
-	magSample = dataI*dataI+dataQ*dataQ
+from .Constant import Constant as C
+from .Constant import *
 
-	phase = np.arctan2(dataQ, dataI)
-	phase *= 128.0/np.pi
-	phase = phase.astype('int')
-	
-	##################################
-	# phase calculation:
-	##################################
-	mag = np.zeros(dataLength)
-	for i in range(7, dataLength):
-		mag[i] = 10.0*np.log10(np.sum(magSample[i-7:i])) if np.sum(magSample[i-7:i]) > 1.0e-2 else mag[i-1]
-	
-	phaseDiff = np.diff(phase)
-	## convert phase from range (-2pi:2pi) to range (-pi:pi)
-	phaseDiff &= 0xff
-	phaseDiff[phaseDiff>=128] += -256
 
-	freq = np.zeros(dataLength, dtype='int')
-	for i in range(3, dataLength-1):
-		# frequency avrage of 4 samples
-		freq[i] = phaseDiff[i]+phaseDiff[i-1]+phaseDiff[i-2]+phaseDiff[i-3]
+def ChipConvert(chip_bit):
+	## detecting preamble (first chip_sequence should be PN[0])
+	index_first_bit = int([i for i in range(chip_bit.size) if np.all(chip_bit[i:i+32] == C.WpanPN[0])][0])
+	return np.reshape(chip_bit[index_first_bit:index_first_bit+int((chip_bit.size-index_first_bit)/32)*32],(-1,32))
+
+def DataExtraction(chip_sequence):
+	data = np.array([i for chip in chip_sequence for i in range(16) if np.all(chip == C.WpanPN[i])], dtype=np.uint8)
+	data_byte = np.array([(d_first+16*d_second) for d_first, d_second in zip(data[0::2], data[1::2])], dtype=np.uint8)
+	start_index = np.argwhere(data_byte==C.sfd)
+	if start_index.size:
+		start_index = int(start_index[0])
+		data_len_extracted = int(data_byte[start_index+1])
+		data_extracted = data_byte[(start_index+2):(start_index+2+data_len_extracted)], data_len_extracted
+		crc_result = CrcCalculation(data_byte[(start_index+2):(start_index+2+data_len_extracted+2)])
+	else:
+		print('SFD Error: delimiter is not found in extracted data')
+		data_len_extracted = 0
+		data_extracted = 0
+		crc_result = -1
+		
+	return data_extracted, data_len_extracted, np.all(crc_result == 0)
+
+def Demodulation(data, Fs):
 	
-	# ##################################
-	# # sync detection and offset canselation
-	# ##################################
-	
-	# syncDetection = np.zeros(dataLength, dtype='int32')
-	# syncDet = np.zeros(6, dtype=bool)
-	# for i in range(int(15*SymbolCount), dataLength):
-	# 	for j in range(syncDet.size):
-	# 		syncDet[j] = np.abs(phase[i-int((syncDet.size-1-j)*SymbolCount)]-(C.WpanPN0Phase[j]*64)) <= 64
-	# 	if np.all(syncDet):
-	# 		syncDetection[i] = 200
-	# 		print "Sync is detected, sample number = ",i
-	
-	valid = 0
-	data = 0
-	
-	plt.plot(mag)
-	plt.plot(freq)
-	plt.legend(['mag', 'freq'], loc='best')
-	plt.grid()
+	#sp.fftPlot(data.real, data.imag, n=2, fs=Fs)
+	plt.plot(data.real, data.imag, '.')
 	plt.show()
+
+	## carrier recovery: phase offset detection
+	nSample_per_chip = int(Fs*C.ChipDuration)
+	preamble_data = C.WpanPN0Phase[:7]
+	preamble_data = np.repeat(preamble_data, nSample_per_chip)
+	phase_offset = 0
+
+	for index in range(data.size//nSample_per_chip - 8):
+		corr_value = np.zeros(20)
+		for i in range(corr_value.size):
+			data_fix = data[index*nSample_per_chip:(index+7)*nSample_per_chip]*np.exp(1j*(i-10)*np.pi/20)
+			dataI = data_fix.real
+			dataQ = np.roll(data_fix.imag, -nSample_per_chip//2)
+			phase = np.arctan2(dataQ, dataI)*4/np.pi
+			corr_value[i] = np.sum(np.multiply(preamble_data, phase))
+		## check if correlation is greater than 90% of max value index and offset is acceptable
+		if np.max(corr_value) > (0.825 * np.sum(preamble_data*preamble_data)):
+			print('phase offset is detected: ', corr_value, np.sum(preamble_data*preamble_data), np.argmax(corr_value), index)
+			phase_offset = (np.argmax(corr_value)-10)*np.pi/20
+			break
 	
-	# plt.plot(dataI)
-	# plt.plot(dataQ)
-	# plt.legend(['real', 'imag'], loc='best')
-	# # plt.plot(basebandSig.real)
-	# # plt.plot(basebandSig.imag)
-	# plt.grid()
-	# plt.show()
+	## original phase
+	#dataI = data.real
+	#dataQ = np.roll(data.imag, -nSample_per_chip//2)
+	#phase_raw = np.arctan2(dataQ, dataI)*4/np.pi
+
+	## phase offset cancelation
+	data_offset = data * np.exp(1j*phase_offset)
+	plt.plot(data_offset.real, data_offset.imag, '.')
+	plt.show()
+
+
+	dataI = data_offset.real
+	dataQ = np.roll(data_offset.imag, -nSample_per_chip//2)
+	phase = np.arctan2(dataQ, dataI)*4/np.pi
+
+	## clock/data recovery
+	phase_extract, index = cr.EarlyLate(phase, nSample_per_chip, 1.0, 5, True)
+	phase_extract = np.floor(phase_extract+0.5)
 	
-	# plt.plot(mag)
-	# plt.plot(syncDetection)
+	## convert phase (-3,-1,1,3) to chip bit
+	chip_bit = np.hstack([(C.phase_to_bit[int((ph+3)/2)]) for ph in phase_extract])
+
+	## convert chip_bit to chip_sequence
+	chip_sequence = ChipConvert(chip_bit)
 	
-	return freq, mag, valid, data
+	## extract data
+	data_extract, data_len, crc = DataExtraction(chip_sequence)
+
+	print(data_extract, data_len, crc)
+
+	return data_extract

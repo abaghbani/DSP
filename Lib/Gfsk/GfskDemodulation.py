@@ -1,58 +1,39 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Gfsk.Constant import Constant as C
+import Spectrum as sp
+import ClockRecovery as cr
 
-def GfskDemodulation(dataI, dataQ, fs):
-	
-	dataLength = dataI.size
-	dI = dataI.astype('int64')
-	dQ = dataQ.astype('int64')
-	magSample = (dI*dI)+(dQ*dQ)
-	phase = np.arctan2(dataQ, dataI)
-	phase *= 128.0/np.pi
-	phase = phase.astype('int')
-	
-	mag = np.zeros(dataLength)
-	for i in range(29, dataLength):
-		mag[i] = 10.0*np.log10(np.sum(magSample[i-29:i+1])/30)
-	
-	freqSig = np.diff(phase)
-	## convert phase from range (-2pi:2pi) to range (-pi:pi)
-	freqSig &= 0xff
-	freqSig[freqSig>=128] += -256
+from .Constant import *
+C = Constant()
 
-	freq = np.zeros(dataLength, dtype='int')
-	for i in range(3, dataLength-1):
-		# frequency avrage of 4 samples
-		freq[i] = freqSig[i]+freqSig[i-1]+freqSig[i-2]+freqSig[i-3]
-	
-	###########################
-	# mode detection
-	###########################
-	modeStream = np.zeros(6, dtype=bool)
-	mode = np.zeros(dataLength, dtype=bool)
-	sliceLength = 0
-	ssLength = np.zeros(dataLength, dtype='int')
-	for i in range(1, dataLength):
-		sliceLength = sliceLength+1 if sliceLength < 14 else 0
-		if (freq[i]>=0) ^ (freq[i-1]>=0):
-			if(sliceLength > 5 and sliceLength < 9):
-				#modeStream = np.ones(modeStream.size)
-				modeStream = np.concatenate((True, True, True, modeStream[:-3]), axis=None)
-			else:
-				
-				modeStream = np.concatenate((bool(np.abs(freq[i]-freq[i-2]) >= C.ModeRateThreshold), modeStream[:-1]), axis=None)
-			sliceLength = 0
-		mode[i] = 1 if np.all(modeStream==1)  else 0 if np.all(modeStream==0) else mode[i-1]
-		ssLength[i] = sliceLength
-	# hacking for BER test (shift 64 samples to left to have all preamble correctly):
-	#mode = np.roll(mode, -64)
+def ModeDetection(freq):
+	mode = np.zeros(6, dtype=np.uint8)
+	mode_avg = np.zeros(freq.size, dtype=np.uint8)
+	for i in range(2, freq.size):
+		if (freq[i]>=0) != (freq[i-1]>=0):
+			mode = np.roll(mode, 1)
+			mode[0] = (np.abs(freq[i]-freq[i-2]) >= C.ModeRateThreshold)
+		mode_avg[i] = 1 if np.all(mode == 1) else 0 if np.all(mode == 0) else mode_avg[i-1]
 
-	###########################
-	# offset canselation
-	###########################
-	SymbolCount = fs/2.0
+	return mode_avg
+
+def SignalDetection(freq):
+	level = np.array([(np.abs(val)<50) for val in freq])
+	
+	mode = np.zeros(6, dtype=np.uint8)
+	detection = np.zeros(freq.size, dtype=np.uint8)
+	for i in range(19, freq.size):
+		if (freq[i]>=0) != (freq[i-1]>=0):
+			mode = np.roll(mode, 1)
+			mode[0] = (np.abs(freq[i]-freq[i-2]) <= 22)
+		detection[i] = 1 if np.all(level[i-19:i+1] == 1) and np.all(mode==1) else 0 if np.all(level[i-2:i+1] == 0) or np.all(mode==0) else detection[i-1]
+	
+	return detection
+
+def FrequencyOffsetCalc(freq, mode, Fs):
+	dataLength = freq.size
+	SymbolCount = Fs/2.0
 	freqAvrage = np.zeros(dataLength, dtype='int')
 	syncDetection = np.zeros(dataLength, dtype=bool)
 	syncDetectionHalf = np.zeros(dataLength, dtype=bool)
@@ -72,59 +53,86 @@ def GfskDemodulation(dataI, dataQ, fs):
 		xcorrHalf[i] = freq[i]-freq[i-int(2*SymbolCount)]+freq[i-int(4*SymbolCount)]-freq[i-int(6*SymbolCount)]
 		
 		if mode[i] == 0:
-			offset[i] = freqAvrage[i] if np.abs(freqAvrage[i]) < C.FrequencyAvrageMaximum and syncDetectionHalf[i] and syncDetectionHalf[i-1] and syncDetectionHalf[i-2] and ((xcorrHalf[i-2]>=0) ^ (xcorrHalf[i-3]>=0)) else offset[i-1]
+			offset[i] = freqAvrage[i] if np.abs(freqAvrage[i]) < C.FrequencyAvrageMaximum and syncDetectionHalf[i] and syncDetectionHalf[i-1] and syncDetectionHalf[i-2] and ((xcorrHalf[i-4]>=0) ^ (xcorrHalf[i-5]>=0)) else offset[i-1]
 		else:
-			offset[i] = freqAvrage[i] if np.abs(freqAvrage[i]) < C.FrequencyAvrageMaximum and syncDetection[i] and syncDetection[i-1] and syncDetection[i-2] and ((xcorr[i-3]>=0) ^ (xcorr[i-4]>=0)) else offset[i-1]
+			offset[i] = freqAvrage[i] if np.abs(freqAvrage[i]) < C.FrequencyAvrageMaximum and syncDetection[i] and syncDetection[i-1] and syncDetection[i-2] and ((xcorr[i-4]>=0) ^ (xcorr[i-5]>=0)) else offset[i-1]
 		
 		# Limit = 12
 		# LrDet[i] = 1 if ((freq[i]>Limit and freq[i-1*SymbolCount]>Limit and freq[i-3*SymbolCount]<-Limit and freq[i-4*SymbolCount]<-Limit) or \
 						# (freq[i]<-Limit and freq[i-1*SymbolCount]<-Limit and freq[i-3*SymbolCount]>Limit and freq[i-4*SymbolCount]>Limit)) and \
-						# ( (freq[i-2*SymbolCount]>=0) ^ (freq[i-2*SymbolCount-1]>=0) ) else 0
-	freqSync = freq-offset
 	
 	#plt.plot(freq)
 	#plt.plot(freqAvrage, '.')
-	#plt.plot(syncDetection, '.')
-	##plt.plot(syncDetectionHalf)
-	#plt.plot(xcorr, '-.')
-	##plt.plot(xcorrHalf)
+	##plt.plot(syncDetection, '.')
+	#plt.plot(syncDetectionHalf)
+	##plt.plot(xcorr, '-.')
+	#plt.plot(xcorrHalf)
 	#plt.plot(offset)
 	##plt.plot(mode)
-	##plt.plot(ssLength)
 	#plt.legend(['freq', 'avg', 'syncdet', 'xcorr', 'offset', 'mode'], loc='best')
 	#plt.grid()
 	#plt.show()
-	
-	###########################
-	# clock recovery
-	###########################
+					# ( (freq[i-2*SymbolCount]>=0) ^ (freq[i-2*SymbolCount-1]>=0) ) else 0
+	return offset
+
+def ClockRecovery(freq, mode, Fs):
+	dataLength = freq.size
+	SymbolCount = Fs/2.0
 	clkRecCount = np.zeros(dataLength, dtype='int8')
 	valid = np.zeros(dataLength, dtype=bool)
-	data = np.zeros(dataLength, dtype=bool)
+	data = np.zeros(dataLength, dtype=np.int8)
 	correction = 0
 	for i in range(dataLength):
-		clkRecCount[i] = 0 if ((freqSync[i]>=0) ^ (freqSync[i-1]>=0)) or clkRecCount[i-1] == int(SymbolCount*2)-1 or correction == 1 else clkRecCount[i-1]+1
-		correction = 1 if ((freqSync[i]>=0) ^ (freqSync[i-1]>=0)) and (clkRecCount[i-1] == 3 or clkRecCount[i-1] == 4 or clkRecCount[i-1] == 10 or clkRecCount[i-1] == 11) else 0
+		clkRecCount[i] = 0 if ((freq[i]>=0) ^ (freq[i-1]>=0)) or clkRecCount[i-1] == int(SymbolCount*2)-1 or correction == 1 else clkRecCount[i-1]+1
+		correction = 1 if ((freq[i]>=0) ^ (freq[i-1]>=0)) and (clkRecCount[i-1] == 3 or clkRecCount[i-1] == 4 or clkRecCount[i-1] == 10 or clkRecCount[i-1] == 11) else 0
 		if mode[i]==0: ## halfrate mode (1mb/s)
 			valid[i] = 1 if clkRecCount[i] == int(SymbolCount) else 0
 		elif mode[i]==1: ## fullrate (2Mb/s)
 			valid[i] = 1 if (clkRecCount[i]%int(SymbolCount)) == int(SymbolCount/2) else 0
-		data[i] = bool(freqSync[i]>=0)
+		data[i] = (freq[i]>=0)
 	
-	rxData = np.zeros(0)
-	for i in range(dataLength):
-		if valid[i] == 1:
-			rxData = np.append(rxData, '1' if data[i] else '0')
-	
+	rxData = data[np.nonzero(valid)]
 	print(rxData)
 		
-	#plt.plot(freqSync)
+	plt.plot(freq)
 	#plt.plot(offset)
 	#plt.plot(valid, '.')
 	#plt.plot(data)
 	#plt.plot(clkRecCount)
 	#plt.legend(['freq', 'offset', 'valid', 'data', 'counter'], loc='best')
-	#plt.grid()
-	#plt.show()
+	plt.grid()
+	plt.show()
 
-	return freqSync, mag, valid, data
+	return rxData
+
+def Demodulation(data, Fs):
+	
+	mag = np.abs(data)
+	mag = np.array([20.0*np.log10(np.sum(mag[i-29:i+1])/30) for i in range(29, mag.size)])
+	mag = np.insert(mag, 0, [0]*28)
+	
+	phase = (np.arctan2(data.imag, data.real) * 128.0/np.pi).astype(np.int8)
+	freq = np.diff(phase)
+	# avraging over 4 samples
+	freq = np.convolve([1, 1, 1, 1], freq, 'same')
+
+	mode = ModeDetection(freq)
+	present = SignalDetection(freq)
+	present_mag = (mag>55)
+
+	freq -= FrequencyOffsetCalc(freq, mode, Fs)
+	##rxData = ClockRecovery(freq, mode, Fs)
+	#bit, bit_index = cr.CrossZero(freq, 7.5, 7.0)
+	#bit, bit_index = cr.EarlyLate(freq, 15, 0, 1)
+	bit, bit_index = cr.EarlyLate_noninteger(freq, 7.5, 1)
+	
+	plt.plot(bit_index, bit, 'bo')
+	plt.plot(freq)
+	plt.plot(mode)
+	plt.plot(present*present_mag*100)
+	#plt.legend(['bit', 'freq'], loc='best')
+	plt.grid()
+	plt.show()
+	bit = np.where(bit>=0, 1, -1)
+
+	return freq, mag, bit
