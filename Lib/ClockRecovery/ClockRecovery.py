@@ -33,17 +33,22 @@ def EarlyLate(data, period, gap=0, delta=1, plot_data=False):
 
 	return bit_out, bit_index
 
-def CrossZero(data, period, Level_low):
+def CrossZero(data, period):
 
-	counter = np.zeros(data.size, dtype=np.uint8)
+	counter = 0
 	bit_out = np.empty(0, dtype=np.int8)
 	bit_index = np.empty(0, dtype=np.uint32)
 
 	for i in range(data.size):
-		counter[i] = 0 if (data[i]>=0) != (data[i-1]>=0) or (counter[i-1] >= period-1) else counter[i-1]+1
-		if counter[i] == period//2:
-			bit_out = np.append(bit_out, 1 if (data[i]>=Level_low) else -1 if (data[i] <= -Level_low) else 0)
+		counter = 0 if (data[i]>=0) != (data[i-1]>=0) or (counter >= period-1) else counter+1
+		if counter == period//2-1:
+			bit_out = np.append(bit_out, data[i])
 			bit_index = np.append(bit_index, i)
+	
+	plt.plot(data)
+	plt.plot(bit_index, bit_out, '.')
+	plt.legend(['raw', 'sample'])
+	plt.show()
 
 	return bit_out, bit_index
 

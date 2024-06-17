@@ -10,6 +10,33 @@ class ModemLib:
 		data = data * self.mylocalcoeff
 		return data
 
+	def plot_amp_pha(self, w, h, fs, label_text, show_flag = False):
+		plt.subplot(211)
+		plt.plot((w*fs)/(2*np.pi), 20.0*np.log10(np.abs(h)), label=label_text)
+		plt.subplot(212)
+		plt.plot((w*fs)/(2*np.pi), np.angle(h), label=label_text)
+		if show_flag:
+			plt.subplot(211)
+			plt.ylabel('Magnitude (db)')
+			plt.xlabel(r'Frequency (MHz)')
+			plt.subplot(212)
+			plt.ylabel('phase (rad)')
+			plt.xlabel(r'Frequency (MHz)')
+			plt.title(r'Frequency response')
+			plt.legend()
+			plt.grid()
+			plt.show()
+
+	def plot_amp(self, w, h, fs, label_text, show_flag = False):
+		plt.plot((w*fs)/(2*np.pi), 20.0*np.log10(np.abs(h)), label=label_text)
+		if show_flag:
+			plt.ylabel('Magnitude (db)')
+			plt.xlabel(r'Frequency (MHz)')
+			plt.title(r'Frequency response')
+			plt.legend()
+			plt.grid()
+			plt.show()
+
 	#Plot frequency and phase response
 	def freqResPlot(self, b,a=1,fs=1):
 		w, h = signal.freqz(b,a)
@@ -70,10 +97,10 @@ class ModemLib:
 		return outSig
 
 	def Downsampling_CIC_n3(self, inSig, down_rate=4):
-		x = np.zeros(3)
-		y = np.zeros(3)
-		midSig = np.zeros(inSig.size)
-		outSig = np.zeros(inSig.size//down_rate)
+		x = np.zeros(3, dtype=inSig.dtype)
+		y = np.zeros(3, dtype=inSig.dtype)
+		midSig = np.zeros(inSig.size, dtype=inSig.dtype)
+		outSig = np.zeros(inSig.size//down_rate, dtype=inSig.dtype)
 
 		for i in range(inSig.size):
 			midSig[i]=inSig[i]+x[0]+x[1]+x[2]
@@ -94,10 +121,10 @@ class ModemLib:
 		# R: decimation rate, between 4 and 8192 (int this function = down_rate)
 		# M: differential delay, between 1 and 2 (usually is 1, in this function = 1)
 		# filter gain = (MR)^N = (down_rate)^4
-		x = np.zeros(4)
-		y = np.zeros(4)
-		midSig = np.zeros(inSig.size)
-		outSig = np.zeros(inSig.size//down_rate)
+		x = np.zeros(4, dtype=inSig.dtype)
+		y = np.zeros(4, dtype=inSig.dtype)
+		midSig = np.zeros(inSig.size, dtype=inSig.dtype)
+		outSig = np.zeros(inSig.size//down_rate, dtype=inSig.dtype)
 
 		for i in range(inSig.size):
 			midSig[i]=inSig[i]+x[0]+x[1]+x[2]+x[3]
@@ -129,8 +156,8 @@ class ModemLib:
 		#K = 0.6072529350088812561694
 		K = 1
 		
-		x = in_x
-		y = in_y
+		x = float(in_x)
+		y = float(in_y)
 		beta = 0.0
 		if x == 0:
 			return (y, np.pi/2.0) if y >= 0 else (-y, -np.pi/2.0)
@@ -141,7 +168,7 @@ class ModemLib:
 			(x, y) = (-x, -y)
 		
 		for i in range(0,N):
-			d = 1 if y < 0 else -1
+			d = 1.0 if y < 0 else -1.0
 			(x,y) = (x - (d*(2**(-i))*y), (d*(2**(-i))*x) + y)
 			beta = beta - (d*np.arctan(2**(-i)))
 		return x, beta

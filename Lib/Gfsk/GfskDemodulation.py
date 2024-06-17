@@ -105,14 +105,21 @@ def ClockRecovery(freq, mode, Fs):
 
 	return rxData
 
+def phase_correction(phase):
+	return (phase+np.pi)%(2*np.pi)-np.pi
+
 def Demodulation(data, Fs):
 	
+	#sp.fftPlot(data, fs = Fs)
 	mag = np.abs(data)
 	mag = np.array([20.0*np.log10(np.sum(mag[i-29:i+1])/30) for i in range(29, mag.size)])
 	mag = np.insert(mag, 0, [0]*28)
 	
-	phase = (np.arctan2(data.imag, data.real) * 128.0/np.pi).astype(np.int8)
-	freq = np.diff(phase)
+	phase = np.angle(data)
+	freq = phase_correction(np.diff(phase))*128.0/np.pi
+	#phase = (np.arctan2(data.imag, data.real) * 128.0/np.pi).astype(np.int8)
+	#freq = np.diff(phase)
+	
 	# avraging over 4 samples
 	freq = np.convolve([1, 1, 1, 1], freq, 'same')
 

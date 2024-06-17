@@ -20,7 +20,7 @@ def spec_hist(data, NBIT=16, NFFT=4096, Pmin = -120.0, Pmax=3.0, aspect=1080.0/1
 	FS = Pmax-Pmin
 	W = data.shape[0]
 	H = int(W * aspect);
-	hst = np.ones((data.shape[0],H), dtype=np.int)
+	hst = np.ones((data.shape[0],H), dtype=np.int64)
 	data = 10.*np.log10(data)	#to dB
 	y = data
 	y = y*H/FS + H;
@@ -54,7 +54,7 @@ def histogram2jpeg(data):
 	data = data.astype(float) * (2**-(NBPS-1));	#scale to 0dBFS
 	data = np.multiply(data, np.cos((np.arange(data.size)*2*np.pi*120.0/240.0)+0.06287))
 
-	spectrum, unused1, unused2 = mlab.specgram(data, NFFT=NFFT, window = np.blackman(NFFT), noverlap=NFFT*overlap)
+	spectrum, unused1, unused2 = mlab.specgram(data, NFFT=NFFT, window = np.blackman(NFFT), noverlap=int(NFFT*overlap))
 	spectrum /= NFFT/8;
 
 	print('Spectrogram shape: {0[0]}:{0[1]}'.format(spectrum.shape))

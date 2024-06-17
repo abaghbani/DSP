@@ -7,7 +7,7 @@ import Spectrum as sp
 from .Constant import *
 C = Constant()
 
-def Modulation(payload, Fs):
+def Modulation(payload):
 
 	crc = CrcCalculation(payload)
 	access_address = C.GfskAccessAddress_Adv
@@ -19,6 +19,7 @@ def Modulation(payload, Fs):
 	frequency_sample = np.concatenate((np.zeros(4*8, dtype=np.int8), frequency_sample, np.zeros(4*8, dtype=np.int8) ))
 
 	## Upsampling
+	Fs = 15.0
 	over_sample_rate = int(Fs/C.bit_rate)
 	frequency_sample = frequency_sample.repeat(over_sample_rate)
 
@@ -44,7 +45,7 @@ def Modulation(payload, Fs):
 	##################################
 	## filter output
 	##################################
-	(b, a) = signal.butter(7, 1.0e6, fs=Fs)
+	(b, a) = signal.butter(7, 1.0, fs=Fs)
 	basebandFlt = signal.lfilter(b, a, baseband_sig)
 	
 	#sp.fftPlot(basebandFlt, fs= Fs)
@@ -64,7 +65,7 @@ def Modulation(payload, Fs):
 	frequencyOffset = offset+drift*np.linspace(0, 1, basebandFlt.size)
 	baseband = basebandFlt*np.exp (1j*2*np.pi*np.cumsum(frequencyOffset/Fs))
 	
-	return baseband_sig
+	return baseband_sig, Fs
 
 def GaussianFunction(Td, BT, h, fs):
 					

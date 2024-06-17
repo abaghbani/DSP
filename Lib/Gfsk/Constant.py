@@ -2,7 +2,7 @@ import numpy as np
 
 class Constant:
 	
-	bit_rate = 1.0e6
+	bit_rate = 1.0
 	GfskBT = 0.5
 	GfskBrModulationIndex = [0.28, 0.35]
 	GfskBleModulationIndex = [0.45, 0.55]

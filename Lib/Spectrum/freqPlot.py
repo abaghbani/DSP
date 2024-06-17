@@ -5,19 +5,19 @@ import scipy.signal as signal
 def fftPlot(data1, data2=None, n=1, fs=1, index=1, nperseg=2**12):
 	fig = plt.figure()
 	if n == 1:
-		f, pow = signal.welch(data1, fs=fs, nperseg=nperseg, window='hanning', scaling='spectrum')
+		f, pow = signal.welch(data1, fs=fs, nperseg=nperseg, scaling='spectrum')
 		plt.plot(f, 10.0*np.log10(pow/data1.size))
 		plt.xlabel('frequency [Hz]')
 		plt.ylabel('PSD [dBFS]')
 		plt.grid()
 	if n == 2:
-		f, pow = signal.welch(data1, fs=fs, nperseg=nperseg, window='hanning', scaling='spectrum')
+		f, pow = signal.welch(data1, fs=fs, nperseg=nperseg, scaling='spectrum')
 		plt.subplot(211)
 		plt.plot(f, 10.0*np.log10(pow/data1.size))
 		plt.xlabel('frequency [Hz]')
 		plt.ylabel('PSD [dBFS]')
 		plt.grid()
-		f, pow = signal.welch(data2, fs=fs, nperseg=nperseg, window='hanning', scaling='spectrum')
+		f, pow = signal.welch(data2, fs=fs, nperseg=nperseg, scaling='spectrum')
 		plt.subplot(212)
 		plt.plot(f, 10.0*np.log10(pow/data1.size))
 		plt.xlabel('frequency [Hz]')

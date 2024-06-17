@@ -1,12 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .Constant import Constant as C
+from .Constant import *
+C = Constant()
 
-def DpskDemodulation(dataI, dataQ, fs):
+def DpskDemodulation(dataI, dataQ, fs, modulation_type):
 	
 	dataLength = dataI.size
-	SymbolCount = fs/1.0
+	SymbolCount = fs/SymbolRate(modulation_type)
 	# print SymbolCount
 	
 	dI = dataI.astype('int64')
@@ -42,6 +43,12 @@ def DpskDemodulation(dataI, dataQ, fs):
 	phase &= 0x1ff
 	phase[phase>=256] += -512
 	
+	plt.plot(mag)
+	plt.plot(phase)
+	plt.legend(['mag', 'phase'], loc='best')
+	plt.grid()
+	plt.show()
+
 	# ##################################
 	# # sync detection and offset canselation
 	# ##################################
@@ -118,3 +125,36 @@ def DpskDemodulation(dataI, dataQ, fs):
 	
 	
 	return mag, syncEnable, valid, data
+
+def CompareData(txData, rssi, sync, valid, data, modType):
+	dataLength = data.size
+	detected = np.zeros(dataLength, dtype=bool)
+	demodData = np.zeros(0, dtype='int')
+	demodDataRaw = np.zeros(0, dtype='int')
+	for i in range(1, dataLength):
+		if sync[i] == 1:
+			detected[i] = 1
+		else:
+			detected[i] = detected[i-1]
+	
+		if detected[i] == 1 and valid[i] == 1 and sync[i] == 0:
+			if modType == C.DpskModulationType.Edr2:
+				demodData = np.append(demodData, C.TableRxPhase4DQPSK[(data[i]+16)%16]) 
+			else:
+				demodData = np.append(demodData, C.TableRxPhase8DQPSK[(data[i]+16)%16]) 
+			demodDataRaw = np.append(demodDataRaw, data[i]) 
+
+	print('received bit number=',demodData.size)
+	if demodData.size >= txData.size:
+		ber = 0
+		errorIndex = []
+		for i in range(txData.size):
+			if demodData[i] != txData[i]:
+				ber += 1
+				errorIndex.append(i)
+				# print 'error data in: ', i, txData[i], demodData[i], demodDataRaw[i], ber
+		print('test is done and BER={0}/{1}'.format(ber, txData.size))
+		print('first index: ',errorIndex[:20])
+		print('last index: ',errorIndex[-20:])
+	else:
+		print('Not enough data is received')

@@ -27,6 +27,8 @@ if __name__=="__main__":
 	print('M: ASK Modulation Qi (BER test)')
 	print('N: FSK Modulation Qi (BER test)')
 	print('F: generate filters coef')
+	print('E: generate new filters coef')
+	print('Y: Hilber design')
 	print('X: Exit')
 	print('>> ')
 
@@ -96,14 +98,15 @@ if __name__=="__main__":
 				mag = mag[np.nonzero((demodData&channel_mask) == channel_value)]
 				data = demodData[np.nonzero((demodData&channel_mask) == channel_value)]
 
-				bit_ask = data & 1
+				bit_ask = data[np.nonzero(data & 2)] & 1
 				bit_fsk = (data[np.nonzero(data & 8)] & 4)//4
 				ask_index = np.arange(bit_ask.size)
-				fsk_index = (ask_index[np.nonzero(data & 8)])
+				#fsk_index = (ask_index[np.nonzero(data & 8)])
 
-				plt.plot(freq)
+				#plt.show()
+				#plt.show()
 				plt.plot(mag)
-				plt.plot(bit_ask, '.')
+				plt.plot(np.arange(bit_ask.size)*25, bit_ask*500+8000, '.')
 				plt.legend(['freq', 'mag', 'ask'], loc='best')
 				plt.show()
 				
@@ -114,6 +117,26 @@ if __name__=="__main__":
 
 				Wpc.WpcPacket(bit_ask, ask_index, bit_fsk, fsk_index, freq, mag, path_out + 'output.json')
 
+			elif c == 'b':  ## process debug data insetting ch0/1 (debug bitstream: debug mode enabled)
+				filename_local = 'C:/Users/Akbar/Documents/FromGit/sw_source/Hardware/Wpe1/TestApp/TestApp/bin/Debug/net48/wpt_20220616_144638.wpe1dump'
+				filename = filename_local
+				rawData = np.fromfile(filename, dtype='uint16')
+
+				ask_data_ac = rawData[0::4].astype('int16')
+				ask_data_avg = rawData[1::4].astype('uint16')
+				fsk_data_ac = rawData[2::4].astype('int16')
+				fsk_data_avg = rawData[3::4].astype('uint16')
+
+				plt.plot(ask_data_ac)
+				plt.plot(ask_data_avg)
+				plt.legend(['ac', 'avg'], loc='best')
+				plt.show()
+				
+				plt.plot(fsk_data_ac)
+				plt.plot(fsk_data_avg)
+				plt.legend(['ac', 'avg'], loc='best')
+				plt.show()
+				
 			elif c == 'w':  ## process extract bit from sw
 				filename_fsk = 'C:/Users/Akbar/Documents/FromGit/sw_source/Hardware/Wpe1/TestApp/TestApp/bin/Debug/net48/' +'fsk_0.bin'
 				bit_fsk = np.fromfile(filename_fsk, dtype='uint8')
@@ -126,11 +149,19 @@ if __name__=="__main__":
 				Wpc.WpcPacket(np.zeros(bit_fsk.size), np.zeros(bit_fsk.size), bit_fsk, fsk_index, np.zeros(bit_fsk.size), np.zeros(bit_fsk.size), 'fsk_output.json')
 
 			elif c == 'q':  ## process extract bit from sw
-				filename_fsk = 'C:/Users/Akbar/Documents/FromGit/sw_source/Hardware/Wpe1/TestApp/TestApp/bin/Debug/net48/ask_0.bin'
-				bit_ask = np.fromfile(filename_fsk, dtype='uint8')
+				filename = 'C:/Users/Akbar/Documents/FromGit/sw_source/Hardware/Wpe1/TestApp/TestApp/bin/Debug/net48/ask_0.bin'
+				bit_ask = np.fromfile(filename, dtype='uint8')
 				ask_index = np.arange(bit_ask.size)
+				filename = 'C:/Users/Akbar/Documents/FromGit/sw_source/Hardware/Wpe1/TestApp/TestApp/bin/Debug/net48/sample_0.bin'
+				data = np.fromfile(filename, dtype='uint16')
 
-				plt.plot(bit_ask, '.')
+				magnitude = data[::2]
+				period = data[1::2]
+
+				#plt.plot(period)
+				#plt.show()
+				plt.plot(magnitude)
+				plt.plot(np.arange(7, bit_ask.size+7)*5, bit_ask*500+6000, '.')
 				#plt.plot(bit_ask)
 				plt.show()
 
@@ -159,23 +190,22 @@ if __name__=="__main__":
 				data = adcData[selected_channel::2]
 				print(f'data size : {data.size}')
 				print(f'ADC Data Min/Max (in selected range): {data.min()}, {data.max()} , {type(data[0])}')
-
+				#plt.plot(data[int(0e6):int(5e6)])
+				#plt.show()
+				#fp.fftPlot(data, fs=fs)
+				
 				type = 'int32'
-
 				data_flt = Wpc.WpcFrontendFiltering(data, fs, type=type)
 				ask_data, rssi = Wpc.WpcAskDemodulator(data_flt, fs, type=type)
-				fsk_data, fsk_index, period =  Wpc.WpcFskDemodulator(data_flt, fs, 16, type=type)
+				fsk_data, fsk_index, period =  Wpc.WpcFskDemodulator(data_flt, fs, 32, type=type)
 				
-				rxData_ask, rxIndex_ask = cr.EarlyLate(ask_data, 25, delta=2, plot_data=True)
-				rxData_fsk, rxIndex_fsk = cr.EarlyLate(fsk_data, 256//16, delta=2, plot_data=True)
+				#rxData_ask, rxIndex_ask = cr.EarlyLate(ask_data, 25, delta=2, plot_data=True)
+				#rxData_fsk, rxIndex_fsk = cr.EarlyLate(fsk_data, 8, delta=2, plot_data=True)
+				rxData_ask, rxIndex_ask = cr.CrossZero(ask_data, 25)
+				rxData_fsk, rxIndex_fsk = cr.CrossZero(fsk_data, 256/32)
+				
 				rxData_ask = np.where(rxData_ask>=0, 1, 0)
 				rxData_fsk = np.where(rxData_fsk>=0, 1, 0)
-
-				#ask_data, rssi = demod.WpcAskDemodulator(data_flt, fs, type=type, offset_cancelation=False)
-				#fsk_data, fsk_index, period =  demod.WpcFskDemodulator(data_flt, fs, type=type, offset_cancelation=False)
-				#rxData_ask, rxIndex_ask = cr.Early_late_withOffset(ask_data, 25, 2, plot_data=True)
-				#rxData_fsk, rxIndex_fsk = cr.Early_late_withOffset(fsk_data,  8, 2, plot_data=True)
-				
 				Wpc.WpcPacket(rxData_ask, rxIndex_ask, rxData_fsk, fsk_index[rxIndex_fsk], period[::10], rssi, path_out + 'output.json')
 
 			elif c == 'a': ## shift model
@@ -284,6 +314,129 @@ if __name__=="__main__":
 				print(f'phase signal filter with nTap = {len} f_cut = {fc} gain = {gain} :')
 				print(np.array2string(b_low, separator=', ', formatter={'float':lambda x: "%1.8f" % x}, max_line_width=25000))
 				myLib.ModemLib().freqResPlot(b_low, fs=fs)
+
+			elif c == 'e':
+				## front-end filter:
+				fs = 5.0e6
+				len = 79
+				fc = 500.0e3
+				b_low = fd.LowpassFilter(len, fc, fs)
+				gain = 1.0/b_low[int((len-1)/2)]
+				b_low *= 1.0/b_low[int((len-1)/2)]
+				print(f'front-end filter with nTap = {len} f_cut = {fc} gain = {gain} :')
+				print(np.array2string(b_low, separator=', ', formatter={'float':lambda x: "%1.8f" % x}, max_line_width=25000))
+				myLib.ModemLib().freqResPlot(b_low, fs=fs)
+
+				## filter_1 - Hilber transfer
+				down_rate = 5
+				fs = 5.0e6 / down_rate
+				len = 93
+				fc_1 = 100.0e3
+				fc_2 = 400.0e3
+				f_trans = 20.0e3
+				#b_low = signal.remez(len, np.array([0., (fc_1-f_trans)/fs, fc_1/fs, fc_2/fs, (fc_2+f_trans)/fs, 0.5]), [0, 1, 0], type='hilbert')
+				b_low = signal.remez(len, np.array([0., 70e3/fs, 100e3/fs, 400.0e3/fs, 420.0e3/fs, 0.5]), [0, 1, 0], type='hilbert')
+				gain = 1.0/b_low[int((len-1)/2)]
+				#b_low *= 1.0/b_low[int((len-1)/2)]
+				print(f'amplitude signal filter with nTap = {len} f_cut_1 = {fc_1} f_cut_2 = {fc_2} gain = {gain} :')
+				print(np.array2string(b_low, separator=', ', formatter={'float':lambda x: "%1.8f" % x}, max_line_width=25000))
+				myLib.ModemLib().freqResPlot(b_low, fs=fs)
+
+				## filter_2 - low pass
+				down_rate = 5
+				fs = 5.0e6 / down_rate
+				len = 81
+				fc = 2.0e3
+				b_low = fd.LowpassFilter(len, fc, fs)
+				gain = 1.0/b_low[int((len-1)/2)]
+				b_low *= 1.0/b_low[int((len-1)/2)]
+				print(f'phase signal filter with nTap = {len} f_cut = {fc} gain = {gain} :')
+				print(np.array2string(b_low, separator=', ', formatter={'float':lambda x: "%1.8f" % x}, max_line_width=25000))
+				myLib.ModemLib().freqResPlot(b_low, fs=fs)
+
+			elif c == 'y':
+				#filename_local = path + 'adc_dump.bin'
+				#adcData = IOs.readRawFile(filename_local, 16)
+				#selected_channel = 0	# channel could be 0 or 1
+				#data = adcData[selected_channel:selected_channel+int(25e6):2]
+				#fp.fftPlot(data, fs=fs)
+				
+				filename_local = path + 'wpc_sample.bin' # 'adc_dump.bin'
+				adcData = IOs.readRawFile(filename_local, 16)
+				selected_channel = 0 #895000	# channel could be 0 or 1
+				data = adcData[selected_channel:selected_channel+int(25e6)]
+				#fp.fftPlot(data, fs=fs)
+				
+				data_input = np.convolve(fd.LowpassFilter(81, 500.0e3, fs), data, mode='same')
+				## decimation
+				downSamplingRate = 5
+				data_flt = np.sum(np.reshape(data_input[:(data_input.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
+				fs = fs/downSamplingRate
+				#fp.fftPlot(data_flt, fs=fs)
+				#data = (data/downSamplingRate).astype(type)
+
+				n_tap = 93
+				sig_I = data_flt
+				sig_Q = np.convolve(signal.remez(n_tap, np.array([0., 70e3/fs, 100e3/fs, 400.0e3/fs, 420.0e3/fs, 0.5]), [0, 1, 0], type='hilbert'), sig_I, mode='same')
+				delay = np.zeros(n_tap)
+				delay[int(n_tap/2)] = 1.0
+				sig_I = np.convolve(delay, sig_I, mode='same')
+				#my_abs = np.power(np.abs(sig_I+1j*sig_Q),2)
+				my_abs = sig_I*sig_I+sig_Q*sig_Q
+
+
+				#data_flt = signal.hilbert(data)
+				#data_abs = np.abs(data_flt)
+
+				my_abs_flt = np.convolve(fd.LowpassFilter(81, 2.0e3, fs), my_abs, mode='same')
+				#fp.fftPlot(data, fs=fs)
+				#fp.fftPlot(data_flt, fs=fs)
+				
+				#plt.plot(data_flt.real, label='real')
+				#plt.plot(data_flt.imag, label='imag')
+				
+				plt.plot(sig_I, label='my_real')
+				plt.plot(sig_Q, label='my_imag')
+				#plt.plot(data, label='sig')
+				#plt.plot(data_abs, label='abs')
+				plt.plot(my_abs, label='my_abs')
+				plt.plot(my_abs_flt, label='my_abs_flt')
+				plt.legend()
+				plt.show()
+
+				#fp.fftPlot(data_abs, fs=fs)
+
+				downSamplingRate = 10
+				ask_data = np.sum(np.reshape(my_abs_flt[:(my_abs_flt.size//downSamplingRate)*downSamplingRate], (-1, downSamplingRate)), axis=1)
+				fs = fs/downSamplingRate
+
+				ask_sample_number = 128  ## (2*fs/2.0e3) = 100, should be 100 but because of divider is changed to 128
+				ask_data_avg = rssi = np.convolve(ask_data, np.ones(ask_sample_number), 'same')/ask_sample_number
+				ask_data_ac = ask_data-ask_data_avg
+				plt.plot(ask_data)
+				plt.plot(ask_data_avg)
+				plt.plot(ask_data_ac)
+				plt.grid()
+				plt.show()
+
+				rxData_ask, rxIndex_ask = cr.CrossZero(ask_data_ac, 25)
+
+				fsk_data = ask_data
+				fsk_sample_number = 4*(200)
+				fsk_data_avg = np.convolve(fsk_data, np.ones(fsk_sample_number), 'same')/fsk_sample_number
+				fsk_data_ac = fsk_data-fsk_data_avg
+				plt.plot(fsk_data)
+				plt.plot(fsk_data_avg)
+				plt.plot(fsk_data_ac)
+				plt.grid()
+				plt.show()
+
+				rxData_fsk, rxIndex_fsk = cr.CrossZero(fsk_data_ac, 200)
+				
+				rxData_ask = np.where(rxData_ask>=0, 1, 0)
+				rxData_fsk = np.where(rxData_fsk>=0, 1, 0)
+				#Wpc.WpcPacket(rxData_ask, rxIndex_ask, rxData_fsk, fsk_index[rxIndex_fsk], period[::10], rssi, path_out + 'output.json')
+				Wpc.WpcPacket(rxData_ask, rxIndex_ask, np.empty(0), np.empty(0), np.zeros(rssi.size), rssi, 'output.json')
 
 			elif c == 'p': ## NFC
 				filename_local = '../Samples/NFC/' + 'Wpc_adc2_20210817_152547.bttraw'

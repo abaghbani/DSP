@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.signal as signal
 
-def UpSampling(data, bw, rate, fs=1):
-	data_upsampled = (rate)*data.repeat(rate)
-	b = signal.firwin(141, bw/(fs/2), window = "hamming")
+def UpSampling(data, rate):
+	data_upsampled = data.repeat(rate)
+	b = signal.firwin(141, 1/rate, fs=1)
 	return np.convolve(b, data_upsampled, mode='same')
 
 def Mixer(data, Fmix, Phase_offset, fs=1):
@@ -17,7 +17,7 @@ def PhaseOffset(data, offset):
 	return data*np.exp(1j*offset)
 
 def WhiteNoise(data, SNRdB):
-	signal_power = np.mean(abs(data**2))
+	signal_power = np.mean(np.abs(data)**2)
 	# calculate noise power based on signal power and SNR
 	sigma2 = signal_power * 10**(-SNRdB/10)
 	#print ("RX Signal power: %.4f, Noise power: %.4f" % (signal_power, sigma2))

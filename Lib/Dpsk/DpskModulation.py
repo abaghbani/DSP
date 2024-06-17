@@ -1,36 +1,60 @@
 import numpy as np
-import scipy.signal as signal
 
 from .Constant import *
 C = Constant()
 
-def DpskModulation(payload):
-	pi= np.pi
-	overSampling = 15
-	symbolStream = np.concatenate((np.zeros(50), C.DpskSync, payload, np.zeros(100)), axis=None)
+def DpskSyncGenerator():
 
-	##################################
-	## Modulation
-	##################################
-	phaseSig = symbolStream*pi/4
-	basebandSig = np.exp(1j*np.cumsum(phaseSig))
+	sync_mapper = np.array(C.DpskSyncHr_mapper_IQ)
+	sync = np.array(sync_mapper[C.DpskSyncHr2_IQ])
+
+	phase = np.angle(sync)
+	phase_diff = np.diff(phase)
+	phase_diff[phase_diff>np.pi] += -2*np.pi
+	phase_diff[phase_diff<-np.pi] += 2*np.pi
+	phase_diff *= 4/np.pi
+
+	print(list(phase_diff.astype(np.int)))
+	return phase_diff
+
+def modulationEdr2(bit_frame):
+	packet_frame_2bits = bit_frame[:(bit_frame.size//2)*2].reshape((-1,2))
+	symbol = np.hstack([C.EDR2_mapper_table[np.packbits(bits, bitorder='little')[0]] for bits in packet_frame_2bits])
+	return symbol
+
+def modulationEdr3(bit_frame):
+	packet_frame_3bits = bit_frame[:(bit_frame.size//3)*3].reshape((-1,3))
+	symbol = np.hstack([C.EDR3_mapper_table[np.packbits(bits, bitorder='little')[0]] for bits in packet_frame_3bits])
+	return symbol
+
+def DpskModulation(payload, type):
+	crc = CrcCalculation(payload)
+	payload_frame = np.concatenate((np.array([0xa0, 0xa0, 0xa0, 0xa0, 0xa7], dtype=np.uint8), np.array([payload.size], dtype=np.uint8), payload, crc))
+	payload_bit = np.unpackbits(payload_frame, bitorder='little')
+
+	if type == C.ModulationType.EDR2:
+		modulatedData = modulationEdr2(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSync, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.EDR3:
+		modulatedData = modulationEdr3(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSync, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.HDR4:
+		modulatedData = modulationEdr2(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSyncHdr4, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.HDR8:
+		modulatedData = modulationEdr2(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSyncHdr8, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.HR2:
+		modulatedData = modulationEdr3(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSyncHr2, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.HR4:
+		modulatedData = modulationEdr3(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSyncHr4, modulatedData, np.zeros(10)), axis=None)
+	elif type == C.ModulationType.HR8:
+		modulatedData = modulationEdr3(payload_bit)
+		symbolStream = np.concatenate((np.zeros(10), C.DpskSyncHr8, modulatedData, np.zeros(10)), axis=None)
 	
-	##################################
-	## upsampling
-	##################################
-	basebandUp = np.zeros(overSampling*basebandSig.size,dtype=basebandSig.dtype)
-	basebandUp[overSampling*np.arange(basebandSig.size)] = overSampling*basebandSig[np.arange(basebandSig.size)]
-	b = signal.remez(100+1, [0., .25, 0.85, 0.5*overSampling], [1,0], fs=overSampling)
-	basebandFlt = signal.lfilter(b, 1, basebandUp)
-	
-	##################################
-	## Frequency offset and drift
-	##################################
-	# offset+drift should be less than +-75KHz
-	# drift should be less than 10KHz
-	offset = 15.0e3/1.0e6
-	drift = 5.0e3/1.0e6
-	frequencyOffset = offset+drift*np.linspace(0, 1, basebandFlt.size)
-	baseband = basebandFlt*np.exp (1j*2*pi*np.cumsum(frequencyOffset/overSampling))
+	phase = np.cumsum(symbolStream*np.pi/4)
+	baseband = np.exp(1j*phase)
 	
 	return baseband

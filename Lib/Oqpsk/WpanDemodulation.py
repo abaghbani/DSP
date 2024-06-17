@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.signal as signal
 import matplotlib.pyplot as plt
 
 import ClockRecovery as cr
@@ -8,27 +9,80 @@ from .Constant import Constant as C
 from .Constant import *
 
 
-def ChipConvert(chip_bit):
+def data_extractor(chip_bit):
 	## detecting preamble (first chip_sequence should be PN[0])
 	index_first_bit = int([i for i in range(chip_bit.size) if np.all(chip_bit[i:i+32] == C.WpanPN[0])][0])
-	return np.reshape(chip_bit[index_first_bit:index_first_bit+int((chip_bit.size-index_first_bit)/32)*32],(-1,32))
+	chip_sequence = np.reshape(chip_bit[index_first_bit:index_first_bit+int((chip_bit.size-index_first_bit)/32)*32],(-1,32))
+	data_4bits = np.array([i for chip in chip_sequence for i in range(16) if np.all(chip == C.WpanPN[i])], dtype=np.uint8)
 
-def DataExtraction(chip_sequence):
-	data = np.array([i for chip in chip_sequence for i in range(16) if np.all(chip == C.WpanPN[i])], dtype=np.uint8)
-	data_byte = np.array([(d_first+16*d_second) for d_first, d_second in zip(data[0::2], data[1::2])], dtype=np.uint8)
+	return data_4bits
+
+def packet_extractor(data):
+	index_first_4bits = int([i for i in range(data.size-4) if np.all(data[i:i+4] == np.array([0, 0, C.sfd[0]&0x0f, (C.sfd[0]>>4)&0x0f]) )][0])
+	data_byte = np.array([(d_first+16*d_second) for d_first, d_second in zip(data[index_first_4bits::2], data[index_first_4bits+1::2])], dtype=np.uint8)
 	start_index = np.argwhere(data_byte==C.sfd)
 	if start_index.size:
 		start_index = int(start_index[0])
-		data_len_extracted = int(data_byte[start_index+1])
-		data_extracted = data_byte[(start_index+2):(start_index+2+data_len_extracted)], data_len_extracted
-		crc_result = CrcCalculation(data_byte[(start_index+2):(start_index+2+data_len_extracted+2)])
+		packet_len = int(data_byte[start_index+1])
+		packet_extracted = data_byte[(start_index+2):(start_index+2+packet_len)]
+		crc_result = CrcCalculation(data_byte[(start_index+2):(start_index+2+packet_len+2)])
 	else:
 		print('SFD Error: delimiter is not found in extracted data')
-		data_len_extracted = 0
-		data_extracted = 0
+		packet_len = 0
+		packet_extracted = 0
 		crc_result = -1
 		
-	return data_extracted, data_len_extracted, np.all(crc_result == 0)
+	return packet_extracted, packet_len, np.all(crc_result == 0)
+
+## non coherent demodulation
+def Demodulation_nco(data, Fs):
+	
+	#sp.fftPlot(data.real, data.imag, n=2, fs=Fs)
+	#plt.plot(data.real, data.imag, '.')
+	#plt.show()
+	
+	basic_sample_rate = 1 # baseband sample rate is 2MS/s or 1Mchip/s
+	period = Fs/basic_sample_rate
+	chip_duration = int(len(C.WpanPN[0]) * period / 2)
+	pn_complex = np.zeros((16, chip_duration), dtype=np.complex)
+	for i in range(16):
+		pn_complex[i] = np.repeat((np.array(C.WpanPN[i][0::2])+1j*np.array(C.WpanPN[i][1::2]))*2-1, period)
+	
+	## preamble detection
+	xcorr = signal.correlate(data, pn_complex[0], mode='valid')
+	xcorr_abs = np.abs(xcorr)
+
+	sync_point, _ = signal.find_peaks(xcorr_abs, prominence=6.8e7, width=int(.5*period), distance=chip_duration-period)
+	print(f'{sync_point[:8]}')
+	#plt.plot(xcorr.real)
+	#plt.plot(xcorr.imag)
+	#plt.plot(xcorr_abs)
+	#plt.plot(sync_point, xcorr_abs[sync_point], 'x')
+	#plt.legend(['real', 'imag', 'ampli'])
+	#plt.show()
+	
+	data_sync = data[sync_point[0]:]
+	data_sync = data_sync[:(data_sync.size//chip_duration)*chip_duration].reshape((-1,chip_duration))
+
+	## demodulation
+	xcorr_abs = np.zeros(16, dtype=np.complex)
+	data_extracted = np.zeros(data_sync.shape[0], dtype=np.uint8)
+	index = 0
+	for dd in data_sync:
+		xcorr_abs = np.array([np.abs(signal.correlate(dd, pn, mode='valid')) for pn in pn_complex])
+		data_extracted[index] = np.argmax(xcorr_abs)
+		index += 1
+		#plt.plot(xcorr_abs)
+		#plt.show()
+	#print([hex(dd) for dd in data_extracted])
+
+	## packet extraction
+	packet_extract, packet_len, crc = packet_extractor(data_extracted)
+	if packet_len != 0:
+		print([hex(dd) for dd in packet_extract], packet_len, crc)
+
+	return packet_extract
+
 
 def Demodulation(data, Fs):
 	
@@ -78,11 +132,11 @@ def Demodulation(data, Fs):
 	## convert phase (-3,-1,1,3) to chip bit
 	chip_bit = np.hstack([(C.phase_to_bit[int((ph+3)/2)]) for ph in phase_extract])
 
-	## convert chip_bit to chip_sequence
-	chip_sequence = ChipConvert(chip_bit)
+	## convert chip_bit to 4 bits data
+	data_4bits = data_extractor(chip_bit)
 	
-	## extract data
-	data_extract, data_len, crc = DataExtraction(chip_sequence)
+	## extract packet
+	data_extract, data_len, crc = packet_extractor(data_4bits)
 
 	print(data_extract, data_len, crc)
 

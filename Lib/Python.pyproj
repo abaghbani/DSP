@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{44879221-110a-4358-92b0-1f975cee2276}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>Global|PythonCore|3.7</InterpreterId>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ChannelFilter\ChannelDecimate.py" />
+    <Compile Include="ChannelFilter\ChannelFilter.py" />
+    <Compile Include="ChannelFilter\Constant.py" />
+    <Compile Include="ChannelFilter\filterbankIntHdr.py" />
+    <Compile Include="ChannelFilter\__init__.py" />
+    <Compile Include="ClockRecovery\ClockRecovery.py" />
+    <Compile Include="ClockRecovery\MuellerMuller.py" />
+    <Compile Include="ClockRecovery\__init__.py" />
+    <Compile Include="Common\conversion.py" />
+    <Compile Include="Common\convolutional_code.py" />
+    <Compile Include="Common\dds.py" />
+    <Compile Include="Common\Frequency.py" />
+    <Compile Include="Common\__init__.py" />
+    <Compile Include="Dpsk\__init__.py" />
+    <Compile Include="Filter\delay.py" />
+    <Compile Include="Filter\filterDesign.py" />
+    <Compile Include="Filter\RemezFilter.py" />
+    <Compile Include="Filter\rrc.py" />
+    <Compile Include="Filter\__init__.py" />
+    <Compile Include="Gfsk\__init__.py" />
+    <Compile Include="IOs\csvFile.py" />
+    <Compile Include="IOs\sdrFile.py" />
+    <Compile Include="IOs\sigmfFile.py" />
+    <Compile Include="IOs\__init__.py" />
+    <Compile Include="LPWAN\LoRa\__init__.py" />
+    <Compile Include="Ofdm\OfdmSynchronization.py" />
+    <Compile Include="Ofdm\__init__.py" />
+    <Compile Include="Oqpsk\__init__.py" />
+    <Compile Include="Pluto\__init__.py" />
+    <Compile Include="QAM\Constant.py" />
+    <Compile Include="QAM\QamDemodulation.py" />
+    <Compile Include="QAM\QamModem.py" />
+    <Compile Include="QAM\QamModulation.py" />
+    <Compile Include="QAM\QamSynchronization.py" />
+    <Compile Include="QAM\__init__.py" />
+    <Compile Include="RfModel\rf_model.py" />
+    <Compile Include="RfModel\__init__.py" />
+    <Compile Include="Sound\ChromaticTone.py" />
+    <Compile Include="Sound\__init__.py" />
+    <Compile Include="Spectrum\freqPlot.py" />
+    <Compile Include="Spectrum\Histogram2jpeg.py" />
+    <Compile Include="Common\ModemLib.py" />
+    <Compile Include="Spectrum\specgram240.py" />
+    <Compile Include="Spectrum\specgram2jpeg.py" />
+    <Compile Include="Spectrum\specgram2jpegInverted.py" />
+    <Compile Include="Spectrum\specgram2jpegPy3.py" />
+    <Compile Include="Common\Utils\signalGen.py" />
+    <Compile Include="Common\Utils\SoundTest1.py" />
+    <Compile Include="Common\Utils\SwitchCase.py" />
+    <Compile Include="Dpsk\Constant.py" />
+    <Compile Include="Dpsk\DpskDemodulation.py" />
+    <Compile Include="Dpsk\DpskModem.py" />
+    <Compile Include="Dpsk\DpskModemBER.py" />
+    <Compile Include="Dpsk\DpskModulation.py" />
+    <Compile Include="Gfsk\Constant.py" />
+    <Compile Include="Gfsk\GfskDemodulation.py" />
+    <Compile Include="Gfsk\GfskModem.py" />
+    <Compile Include="Gfsk\GfskModemBER.py" />
+    <Compile Include="Gfsk\GfskModulation.py" />
+    <Compile Include="IOs\matFile.py" />
+    <Compile Include="IOs\rawFile.py" />
+    <Compile Include="IOs\wavFile.py" />
+    <Compile Include="LPWAN\LoRa\LoRaDemodulation.py" />
+    <Compile Include="LPWAN\LoRa\LoRaModulation.py" />
+    <Compile Include="Ofdm\Constant.py" />
+    <Compile Include="Ofdm\OfdmModem.py" />
+    <Compile Include="Oqpsk\Constant.py" />
+    <Compile Include="Oqpsk\WpanDemodulation.py" />
+    <Compile Include="Oqpsk\WpanModem.py" />
+    <Compile Include="Oqpsk\WpanModemBER.py" />
+    <Compile Include="Oqpsk\WpanModulation.py" />
+    <Compile Include="Ofdm\OfdmDemodulation.py" />
+    <Compile Include="Ofdm\OfdmModulation.py" />
+    <Compile Include="Pluto\Pluto.py" />
+    <Compile Include="RfModel\RfTransceiver.py" />
+    <Compile Include="Sound\DistortionCalc.py" />
+    <Compile Include="Sound\KarplusStrong.py" />
+    <Compile Include="Spectrum\__init__.py" />
+    <Compile Include="UWB\UwbBert.py" />
+    <Compile Include="UWB\UwbTransmitter.py" />
+    <Compile Include="UWB\__init__.py" />
+    <Compile Include="Wpc\WpcBER.py" />
+    <Compile Include="Wpc\WpcCommon.py" />
+    <Compile Include="Wpc\WpcHdlModel.py" />
+    <Compile Include="Wpc\WpcPacket.py" />
+    <Compile Include="Wpc\WpcReceiver.py" />
+    <Compile Include="Wpc\WpcReceiverShift.py" />
+    <Compile Include="Wpc\WpcTransmitter.py" />
+    <Compile Include="Wpc\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ChannelFilter" />
+    <Folder Include="ClockRecovery\" />
+    <Folder Include="Common" />
+    <Folder Include="Common\Utils" />
+    <Folder Include="Dpsk" />
+    <Folder Include="Filter\" />
+    <Folder Include="Gfsk" />
+    <Folder Include="IOs\" />
+    <Folder Include="LPWAN\" />
+    <Folder Include="LPWAN\LoRa\" />
+    <Folder Include="Oqpsk\" />
+    <Folder Include="Ofdm" />
+    <Folder Include="Pluto\" />
+    <Folder Include="QAM\" />
+    <Folder Include="RfModel" />
+    <Folder Include="Sound\" />
+    <Folder Include="Spectrum\" />
+    <Folder Include="UWB\" />
+    <Folder Include="Wpc\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

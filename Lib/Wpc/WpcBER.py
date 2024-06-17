@@ -13,7 +13,9 @@ from .WpcPacket import *
 from .WpcCommon import *
 from .WpcBER import *
 from .WpcHdlModel import *
-import WpcReceiverShift as demod_shift
+from .WpcReceiverShift import WpcFrontendFiltering as demod_shift_FrontFiltering
+from .WpcReceiverShift import WpcAskDemodulator as demod_shift_AskDemodulator
+from .WpcReceiverShift import WpcFskDemodulator as demod_shift_FskDemodulator
 
 def CompareAskData(txData, rxData, len):
 	start_index_rx = 0
@@ -83,8 +85,8 @@ def AskBERtest(packet_len, fop, SNRdb, model='new'):
 		data_flt = WpcFrontendFiltering(sig, fs, 10, type=data_format)
 		ask_data, rssi = WpcAskDemodulator(data_flt, fs, type=data_format)
 	elif model == 'shift':
-		data_flt, temp, fs_low  = demod_shift.WpcFrontendFiltering(sig, fs, fop, 10, type=data_format)
-		ask_data, rssi = demod_shift.WpcAskDemodulator(data_flt, fs_low, type=data_format)
+		data_flt, temp, fs_low  = demod_shift_FrontFiltering(sig, fs, fop, 10, type=data_format)
+		ask_data, rssi = demod_shift_AskDemodulator(data_flt, fs_low, type=data_format)
 	#rxData, rxIndex_ask = cr.Early_late(ask_data, 125, 10, plot_data=False)
 	rxData, rxIndex_ask = cr.Early_late(ask_data, 25, 2, plot_data=False)
 
@@ -118,8 +120,8 @@ def FskBERtest(packet_len, fop, SNRdb, model='new'):
 		fsk_data, fsk_index, period =  WpcFskDemodulator(data_flt, fs, type=data_format)
 		rxData, rxIndex_fsk = cr.Early_late(fsk_data, 8, 1)
 	elif model == 'shift':
-		data_flt, temp, fs_low  = demod_shift.WpcFrontendFiltering(sig, fs, fop, 10, type=data_format)
-		fsk_data = demod_shift.WpcFskDemodulator(data_flt, fs_low, fop, type=data_format)
+		data_flt, temp, fs_low  = demod_shift_FrontFiltering(sig, fs, fop, 10, type=data_format)
+		fsk_data = demod_shift_FskDemodulator(data_flt, fs_low, fop, type=data_format)
 		rxData, rxIndex_ask = cr.Early_late(fsk_data, int((fs_low*256)/fop), 50)
 
 	error = 0

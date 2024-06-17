@@ -1,112 +1,132 @@
 import numpy as np
-import scipy as scipy
-import scipy.signal as signal
 import matplotlib.pyplot as plt
 
+import RfModel as rf
 import ClockRecovery as cr
+import Common
 
+from .QamSynchronization import *
 from .Constant import *
 C = Constant()
 
 def DataExtraction(bit_sequence):
-	data_xcorr = np.array([i for i in range(bit_sequence.size-24) if np.all(bit_sequence[i:i+24] == np.hstack(np.unpackbits(np.hstack((C.preamble[:2], C.sfd)), bitorder = 'little')))])
-	if data_xcorr.size > 0:
-		index_first_bit = int(data_xcorr[0])
-		data_byte = np.hstack(np.packbits(np.reshape(bit_sequence[index_first_bit:index_first_bit+int((bit_sequence.size-index_first_bit)/8)*8],(-1,8)), axis=1, bitorder='little'))
-		data_len_extracted = int(data_byte[3])
-		data_extracted = data_byte[4:4+data_len_extracted]
-		crc_result = CrcCalculation(data_byte[4:4+data_len_extracted+2])
-	else:
-		print('Data Extraction Error: preamble/SFD is not found in extracted data')
-		data_len_extracted = 0
-		data_extracted = 0
-		crc_result = -1
+	data_byte = np.hstack(np.packbits((bit_sequence[:int(bit_sequence.size/8)*8].reshape(-1,8)), axis=1, bitorder='little'))
+	#print(data_byte)
+	if(np.any(data_byte[0:5] != [0xa0, 0xa0, 0xa0, 0xa0, 0xa7])):
+		return 0, 0, False
+	data_len_extracted = int(data_byte[5])
+	data_extracted = data_byte[6:6+data_len_extracted]
+	crc_result = CrcCalculation(data_byte[6:6+data_len_extracted+2])
 		
 	return data_extracted, data_len_extracted, np.all(crc_result == 0)
 
-def Demodulation(data, over_sample_rate):
-	
-	#plt.plot(data.real, data.imag, 'ro')
-	#plt.plot(data[over_sample_rate//2::over_sample_rate].real, data[over_sample_rate//2::over_sample_rate].imag, 'bo')
-	#plt.plot(data.real[:200])
-	#plt.plot(data.imag[:200])
-	#plt.grid()
-	#plt.show()
-
-	## carrier recovery: phase offset detection
-	preamble_index = 0
-	n_slice = 8
-	for index in range(1, data.size-n_slice*over_sample_rate):
-		data_slice = data[index:index+n_slice*over_sample_rate:over_sample_rate]
-
-		## Methode-1
-		xcorr_I = np.abs(np.mean(data_slice.real))
-		xcorr_Q = np.abs(np.mean(data_slice.imag))
-		print(f'{index=:=>4}-----{xcorr_I=}, {xcorr_Q=}, {np.abs(data_slice.real).min()}, {np.abs(data_slice.imag).min()}')
-		if xcorr_I < 0.1*np.abs(data_slice.real).min() and xcorr_Q < 0.1*np.abs(data_slice.imag).min():
-			preamble_index = index
-			break
-
-		## Methode-2
-		#error_det = np.abs(data_slice[1:8]+data_slice[0:7])
-		#print(f'{index=:=>4}-----error data: {error_det.round(1)}, {xcorr_I=}, {xcorr_Q=}')
-		##print(f'{index=:=>4}-----error data:', ['{:.1f}'.format(i) for i in error_det])
-		#if np.all(error_det < 2440):
-		#	preamble_index = index
-		#	break
-		
-	if preamble_index:
-		phase_offset = np.pi/4 - np.arctan2(data.imag[index+over_sample_rate], data.real[index+over_sample_rate])
-		magnitude_scale = np.mean(np.abs(data[index:index+3*over_sample_rate]))
-		print(f'{phase_offset=},  {magnitude_scale=}')
-	else:
-		print(f'phase offset cancelation: no preamble is detected')
-		return 0
-
-	## phase offset cancelation
-	data_offset = data * np.exp(1j*phase_offset)
-	plt.plot(data_offset.real, data_offset.imag, '.')
-	plt.show()
+def demapping(data, sample_rate, type):
+	basic_sample_rate = 2 # HDT sample rate is 2MSymb/s
+	period = int(sample_rate/basic_sample_rate)
+	data_scaled = data
 	
 	## clock/data recovery
-	data_I_extract, index = cr.EarlyLate(data_offset.real, over_sample_rate, magnitude_scale*0.1, over_sample_rate//10, False)
-	#data_Q_extract, index = cr.EarlyLate(data_offset.imag, over_sample_rate, magnitude_scale*0.1, over_sample_rate//10, True)
-	data_I_extract = np.array([np.mean(data_offset.real[i-1:i+2]) for i in index])
-	data_Q_extract = np.array([np.mean(data_offset.imag[i-1:i+2]) for i in index])
-
-	## scaled I/Q data to range [-3, -1, 1, 3]
-	data_I_scaled = np.array([-3 if val <-0.5*magnitude_scale else -1 if val < 0 else 1 if val < 0.5*magnitude_scale else 3 for val in data_I_extract])
-	data_Q_scaled = np.array([-3 if val <-0.5*magnitude_scale else -1 if val < 0 else 1 if val < 0.5*magnitude_scale else 3 for val in data_Q_extract])
+	data_I_extract, index_I = cr.EarlyLate(data_scaled.real, period, gap = 0.1, delta = period//10)
+	data_Q_extract, index_Q = cr.EarlyLate(data_scaled.imag, period, gap = 0.1, delta = period//10)
 	
-	## convert phase (-3-3j,-3-1j, ...3+3j) to bit
-	bit4_sequence = np.array([(C.QAM16_bit[int((val_i+3)/2 +(val_q+3)*2)]) for val_i, val_q in zip(data_I_scaled, data_Q_scaled)], dtype=np.uint8)
-	bit4_sequence = bit4_sequence[:int((bit4_sequence.size//2)*2)]
-	bit_sequence = np.unpackbits(bit4_sequence[0::2]+bit4_sequence[1::2]*16, bitorder='little')
-	
-	## extract data
-	data_extract, data_len, crc = DataExtraction(bit_sequence)
+	## avraging samples
+	#index_I = index_I[:np.min(index_I.size, index_Q.size)]
+	#index_Q = index_Q[:np.min(index_I.size, index_Q.size)]
+	data_I_extract = np.array([np.mean(data_scaled.real[int((i+j)/2)-1:int((i+j)/2)+2]) for i, j in zip(index_I, index_Q)])
+	data_Q_extract = np.array([np.mean(data_scaled.imag[int((i+j)/2)-1:int((i+j)/2)+2]) for i, j in zip(index_I, index_Q)])
 
-	if data_len:
-		print(f'{[hex(val)[2:] for val in data_extract]}, {data_len=}, {crc=}')
+	if type != C.ModulationType.PSK8:
+		data_I_scaled = np.array([-7 if val<-6 else -5 if val<-4 else -3 if val<-2 else -1 if val<0 else 1 if val<2 else 3 if val<4 else 5 if val<6 else 7 for val in data_I_extract])
+		data_Q_scaled = np.array([-7 if val<-6 else -5 if val<-4 else -3 if val<-2 else -1 if val<0 else 1 if val<2 else 3 if val<4 else 5 if val<6 else 7 for val in data_Q_extract])
 	else:
-		print('no data extracted')
-	
-	## plot data:
-	#plt.plot(data_offset.real)
-	#plt.plot(data_offset.imag)
-	#plt.show()
-	
-	#plt.plot(data_I_scaled)
-	#plt.plot(data_Q_scaled)
-	#plt.show()
+		data_I_scaled = np.array([-4 if val<-3.5 or val>3.5 else -3 if val<-2.5 else -2 if val<-1.5 else -1 if val<-0.5 else 0 if val<0.5 else 1 if val<1.5 else 2 if val<2.5 else 3 for val in np.angle(data_I_extract+1j*data_Q_extract)*4/np.pi])
+		data_Q_scaled = np.zeros(data_I_scaled.size)
 
-	plt.plot(data_offset.real)
-	plt.plot(data_offset.imag)
-	plt.plot(index, data_I_extract, 'b.')
-	plt.plot(index, data_Q_extract, 'r.')
+	plt.plot(data_I_extract, data_Q_extract, 'ro')
+	plt.grid()
+	plt.show()
+
+	plt.plot(data_scaled.real)
+	plt.plot(data_scaled.imag)
+	plt.plot(index_I[:data_I_extract.size], data_I_extract, 'b.')
+	plt.plot(index_Q[:data_Q_extract.size], data_Q_extract, 'r.')
+	#plt.plot(index, data_I_scaled, 'bo')
+	#plt.plot(index, data_Q_scaled, 'ro')
 	plt.legend(['real', 'imag'])
 	plt.grid()
 	plt.show()
 
+	return data_I_scaled+1j*data_Q_scaled
 
-	return 1
+def demodulationBPSK(data):
+	bit_stream_I = np.array([list(C.BPSK_QPSK_table.keys())[list(C.BPSK_QPSK_table.values()).index(val)] for val in data.real])
+
+	return np.hstack([bits for bits in bit_stream_I])
+
+def demodulationQPSK(data):
+	bit_stream_I = np.array([list(C.BPSK_QPSK_table.keys())[list(C.BPSK_QPSK_table.values()).index(val)] for val in data.real])
+	bit_stream_Q = np.array([list(C.BPSK_QPSK_table.keys())[list(C.BPSK_QPSK_table.values()).index(val)] for val in data.imag])
+	bit_stream = np.array([np.hstack([bit_I, bit_Q]) for bit_I, bit_Q in zip(bit_stream_I, bit_stream_Q)])
+
+	return np.hstack([bits for bits in bit_stream])
+
+def demodulation8PSK(data):
+	bit_stream = np.array([list(C.PSK8_3bits_table.keys())[list(C.PSK8_3bits_table.values()).index(val)] for val in data.real])
+
+	return np.hstack([bits for bits in bit_stream])
+
+def demodulationQAM16(data):
+	if np.all(np.abs(data.real) <=3) and np.all(np.abs(data.imag) <=3):
+		bit_stream_I = np.array([list(C.QAM16_2bits_table.keys())[list(C.QAM16_2bits_table.values()).index(val)] for val in data.real])
+		bit_stream_Q = np.array([list(C.QAM16_2bits_table.keys())[list(C.QAM16_2bits_table.values()).index(val)] for val in data.imag])
+		bit_stream = np.hstack((bit_stream_I, bit_stream_Q))
+		return np.hstack([bits for bits in bit_stream])
+	else:
+		return 0
+
+def demodulationQAM64(data):
+	bit_stream_I = np.array([list(C.QAM64_3bits_table.keys())[list(C.QAM64_3bits_table.values()).index(val)] for val in data.real])
+	bit_stream_Q = np.array([list(C.QAM64_3bits_table.keys())[list(C.QAM64_3bits_table.values()).index(val)] for val in data.imag])
+	bit_stream = np.hstack((bit_stream_I, bit_stream_Q))
+
+	return np.hstack([bits for bits in bit_stream])
+
+def Demodulation(data, sample_rate, type):
+	
+	data_sync = ts_sync_hdl(data, sample_rate)
+	#data_sync = sync().ts_sync(data, sample_rate)
+
+	data_mapped = demapping(data_sync, sample_rate, type)
+
+	if type == C.ModulationType.BPSK:
+		bit_stream = demodulationBPSK(data_mapped)
+	elif type == C.ModulationType.QPSK:
+		bit_stream = demodulationQPSK(data_mapped)
+	elif type == C.ModulationType.PSK8:
+		bit_stream = demodulation8PSK(data_mapped)
+	elif type == C.ModulationType.QAM16:
+		bit_stream = demodulationQAM16(data_mapped)
+	elif type == C.ModulationType.QAM64:
+		bit_stream = demodulationQAM64(data_mapped)
+	else:
+		bit_stream = 0
+	
+	## extract data
+	if hasattr(bit_stream, "__len__") and bit_stream.size != 0:
+		data_extract, data_len, crc = DataExtraction(bit_stream)
+		
+		if crc and data_len!=0:
+			print(f'Extracted data: Crc is valid, {data_len=}')
+		elif not crc and data_len!=0:
+			print(f'Extracted data: Crc is not valid, {data_len=}')
+		elif not crc and data_len==0:
+			print(f'Extracted data: preamble/SFD is not extracted correctly.')
+			#print(f'{[hex(val)[2:] for val in payload[np.nonzero(data_extract != payload)]]}, {data_len=}')
+			#print(f'{[hex(val)[2:] for val in data_extract[np.nonzero(data_extract != payload)]]}, {data_len=}')
+	else:
+		print(f'Demodulation is failed.')
+		data_extract = 0
+		data_len = 0
+		crc = False
+
+	return data_extract, data_len, crc

@@ -3,17 +3,26 @@ import matplotlib.pyplot as plt
 import adi
 import time
 
+## pyadi-iio should be installed (dependency: pylibiio)
+
 # rx gain mode could be "manual" for AGC enable: "slow_attack", "fast_attack"
 # rx gain in manual mode : valid range is 0 to 74.5 dB
 # tx gain : valid range is -90 to 0 dB
-#pluto_connection = "ip:192.168.2.1"
-#pluto_connection = 'usb:1.24.5'
-pluto_connection = ''
+pluto_connection_ip = "ip:192.168.2.1"
+pluto_connection_usb = 'usb:1.24.5'
+pluto_connection_auto = 'ip:pluto.local'
 
 class Pluto:
 	
 	def __init__(self, var):
-		self.sdr = adi.Pluto(pluto_connection)		
+		if var == 0:
+			self.sdr = adi.Pluto(pluto_connection_ip)
+		elif var == 1:
+			self.sdr = adi.Pluto(pluto_connection_usb)		
+		elif var == 2:
+			self.sdr = adi.Pluto(pluto_connection_auto)
+		elif var == 3:
+			self.sdr = adi.Pluto()
 	
 	def Read(self, SampleRate, BandWidth, LoFrequency, Gain, SampleNumber):
 		self.sdr.sample_rate = int(SampleRate)

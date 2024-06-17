@@ -3,7 +3,7 @@ import numpy as np
 from .Constant import *
 C = Constant()
 
-def Modulation(payload, Fs):
+def Modulation(payload):
 	
 	###################################
 	## Wpan packet
@@ -17,7 +17,7 @@ def Modulation(payload, Fs):
 	##################################
 	## Modulation
 	##################################
-	nSample_per_chip = int(Fs*C.ChipDuration)
+	nSample_per_chip = 16
 	half_sin = np.sin(np.pi*np.arange(nSample_per_chip)/nSample_per_chip)
 
 	dataI = np.hstack([(even_bit*2-1)*half_sin for even_bit in chip_sequence[0::2]])
@@ -27,5 +27,6 @@ def Modulation(payload, Fs):
 
 	## imply Offset-QPSK
 	baseband = dataI+1j*np.roll(dataQ, nSample_per_chip//2)
+	fs = nSample_per_chip * 2.0 / 2		# bit rate = 2.0Mbps, every two bits are modulated in one chip
 	
-	return baseband
+	return baseband, fs
