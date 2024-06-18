@@ -24,6 +24,9 @@ class Pluto:
 		elif var == 3:
 			self.sdr = adi.Pluto()
 	
+	def info(self):
+		print(self.sdr)
+	
 	def Read(self, SampleRate, BandWidth, LoFrequency, Gain, SampleNumber):
 		self.sdr.sample_rate = int(SampleRate)
 		self.sdr.rx_rf_bandwidth = int(BandWidth)

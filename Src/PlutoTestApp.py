@@ -1,21 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import msvcrt
-import sys
 
 import Spectrum as sp
 import Pluto as pl
 
 if __name__=="__main__":
+	mPluto = pl.Pluto(0)
+	mPluto.info()
+	print('------------------------')
+
+	
 	print('R: Receiving')
 	print('T: Transmitting')
 	print('W: Receiving/Transmitting')
 	print('d: debugging')
 	print('X: Exit')
 	print('>> ')
-
-	mPluto = pl.Pluto(0)
-
+	
 	while True:
 		if msvcrt.kbhit():
 			c = msvcrt.getch().decode("utf-8")
