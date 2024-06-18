@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import msvcrt
 import logging as log
 
+import init
 import IOs
 import RfModel as rf
 import ChannelFilter as cf
