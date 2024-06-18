@@ -1,3 +1,7 @@
 {
-    "python.analysis.extraPaths": ["${workspaceFolder}/Lib/"]
+    "python.analysis.extraPaths": ["${workspaceFolder}/Lib/"],
+    "python.autoComplete.extraPaths": ["${workspaceFolder}/Lib/"],
+    "terminal.integrated.env.windows": {"PYTHONPATH":"${workspaceFolder}/Lib/"},
+    "terminal.integrated.env.osx": {"PYTHONPATH":"${workspaceFolder}/Lib/"},
+    "terminal.integrated.env.linux": {"PYTHONPATH":"${workspaceFolder}/Lib/"}
 }
