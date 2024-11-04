@@ -3,3 +3,4 @@ from .convolutional_code import *
 from .dds import *
 from .Frequency import *
 from .conversion import *
+from .print_color import *

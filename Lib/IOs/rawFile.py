@@ -39,5 +39,20 @@ def rfdump_to_bin(filename, start_add, end_add, correction=0):
 		adcData = np.reshape(np.concatenate((fst_uint12[:, None], snd_uint12[:, None]), axis=1), 2 * fst_uint12.shape[0])
 		adcData = (adcData<<(16-12))>>(16-12)
 		fp[0, int(i*2e6):int((i+1)*2e6)] = adcData
+	fp.flush()
 
 	return 0
+
+def bin_to_rfdump(filename):
+	adcData = readRawFile(filename)
+	len_new = int(adcData.size*3/2)
+	fp = np.memmap(filename[:-4]+'.bv1rfdump', mode='w+', dtype=np.dtype(np.uint8), shape=(1, len_new))
+	for i in range(len_new//3):
+		fp[0,i*3+0] = adcData[i*2+0]&0xff
+		fp[0,i*3+1] = ((adcData[i*2+0]>>8)&0x0f) + ((adcData[i*2+1]&0x0f)*16)
+		fp[0,i*3+2] = (adcData[i*2+1]>>4)&0xff
+	
+	fp.flush()
+
+	return 0
+

@@ -6,6 +6,11 @@ def EarlyLate(data, period, gap=0, delta=1, plot_data=False):
 	bit_out = np.empty(0, dtype=type(data[0]))
 	bit_index = np.empty(0, dtype=np.uint32)
 	
+	period_low = int(np.floor(period))
+	period_high = int(np.ceil(period))
+	flag = False
+	period = period_high
+
 	index = 1*period
 	while index<(data.size-delta):
 		if gap == 0:
@@ -23,6 +28,8 @@ def EarlyLate(data, period, gap=0, delta=1, plot_data=False):
 		bit_out = np.append(bit_out, data[index])
 		bit_index = np.append(bit_index, index)
 
+		period = period_high if flag else period_low
+		flag = ~flag
 		index += period
 
 	if plot_data:
@@ -101,34 +108,3 @@ def Earlylate_withOffset(data, period, delta=1, plot_data=False):
 		plt.show()
 
 	return bit_out, bit_index
-
-def EarlyLate_noninteger(data, period, delta):
-	
-	bit_out = np.empty(0, dtype='int')
-	bit_index = np.empty(0, dtype='int32')
-
-	period_low = int(np.floor(period))
-	period_high = int(np.ceil(period))
-	print(period_low, period_high)
-
-	index = 1*period_high
-	flag = False
-	period_now = period_high
-	while index < (data.size-delta):
-		x = (data[index-period_now]>=0) == (data[index-period_now//2]>=0)
-		y = (data[index]>=0) == (data[index-period_now//2]>=0)
-		
-		if x and not(y):
-			index += delta
-		elif not(x) and y:
-			index -= delta
-		
-		bit_out = np.append(bit_out, np.floor(data[index]+0.5))
-		bit_index = np.append(bit_index, index)
-
-		period_now = period_high if flag else period_low
-		index += period_now
-		flag = ~flag
-
-	return bit_out, bit_index
-

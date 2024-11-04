@@ -2,6 +2,21 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
+def rrc_2(n, b, sps):
+	def rrc_calc(f):
+		if f<(1-b)/sps:
+			return 1.0
+		elif f <= (1+b)/sps and f >= (1-b)/sps:
+			return np.sqrt(0.5*(1-np.sin(np.pi*(f*sps-1)/(2*b)))) 
+		else:
+			return 0.0
+
+	freq = np.linspace(0, 1, int(np.ceil(50*sps/2.0)*2))
+	rrc_filter = np.array([rrc_calc(f) for f in freq])
+	fir_filter = signal.firls(n, freq, rrc_filter)
+
+	return fir_filter
+
 def rrc(n, b, f_symb, fs):
 	T = 1/f_symb
 
@@ -13,7 +28,7 @@ def rrc(n, b, f_symb, fs):
 		else:
 			return 0.0
 
-	freq = np.linspace(0, fs/2, int(100*fs*T))
+	freq = np.linspace(0, fs/2, int(np.ceil(100*fs*T/2.0)*2))
 	rrc_filter = np.array([rrc_calc(f) for f in freq])
 	fir_filter = signal.firls(n, freq, rrc_filter, fs=fs)
 

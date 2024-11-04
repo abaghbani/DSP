@@ -3,34 +3,223 @@ import scipy.signal as signal
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
-import RfModel as rf
-
+import Common as cm
 from .Constant import *
 C = Constant()
 
-'''
+def max_detect(data, symb_width):
+	interval = round(symb_width*4)
+	mag_1 = data[:(data.size//interval)*interval].reshape((-1, interval))
+	peak_1 = np.argmax(mag_1, axis=1)
+	peak_1 += interval*np.arange(peak_1.size)
+	mag_1 = data[interval//2:interval//2+(data.size//interval - 1)*interval].reshape((-1, interval))
+	peak_2 = np.argmax(mag_1, axis=1)
+	peak_2 += interval//2
+	peak_2 += interval*np.arange(peak_2.size)
 
-ISI : Inter Symbol Interference
-ICI : Inter Carrier Interference
+	peaks = np.unique(np.hstack(np.column_stack((peak_1[:peak_2.size], peak_2))))
+	return peaks
 
-STO : Symbol Timing Offset
-CFO : Carrier Frequency Offset
-CPO : Carrier Phase Offset
+# def max_detect_2(data, symb_width):
+# 	prominence = 0.15*4*np.max(data.real)
+# 	width = round(symb_width)-2
+# 	peaks, properties = signal.find_peaks(data, height=0, distance=symb_width_by4-3, prominence=prominence, width=width)
+# 	print(f'{prominence=}, {width=}')
+# 	print(properties["prominences"][:10])
+# 	print(properties["widths"][:10])
 
-LTF : Long Training Field
-STF : Short Training Field
 
-CFS : Coarse Frequency Synchronization
-FFS : Fine Frequency Synchronization
+def peak_detect(data, symb_width, plot_enable=True):
+	symb_width_by2 = round(symb_width*2)
+	symb_width_by3 = round(symb_width*3)
+	symb_width_by4 = round(symb_width*4)
 
-CPS : Coarse Phase Synchronization
-FPS : Fine Phase Synchronization
+	data_xcorr = np.array([magnitude_estimator(ts_xcorrolate([d3, d2, d1, d0], C.preamble_sts)) for d3, d2, d1, d0 in zip(np.roll(data, symb_width_by3), np.roll(data, symb_width_by2), np.roll(data, int(symb_width)), data)])
+	data_acorr = data*np.conjugate(np.roll(data, symb_width_by4))
+	data_acorr_sum = np.abs(np.correlate(data_acorr, np.ones(5*symb_width_by4), 'full'))/(5*symb_width_by4)
+	data_ampli_sum = np.abs(np.correlate(np.abs(data), np.ones(2*symb_width_by4), 'full'))/(2*symb_width_by4)
+	
+	peaks = max_detect(data_xcorr, symb_width)
 
-CTS : Coarse Time Synchronization
-FTS : Fine Time Synchronization
+	sts_index = 0
+	for pk in peaks[1:]:
+		if (np.any(pk-symb_width_by4 == peaks) or np.any(pk-symb_width_by4-1 == peaks) or np.any(pk-symb_width_by4+1 == peaks)):
+			if data_acorr_sum[pk]/(data_ampli_sum[pk]**2) > 0.7 and (np.max(data_acorr_sum[pk-symb_width_by4:pk+1])-np.min(data_acorr_sum[pk-symb_width_by4:pk+1]))/(data_ampli_sum[pk]**2) < 0.05:
+				print(pk, (np.max(data_acorr_sum[pk-symb_width_by4:pk+1])-np.min(data_acorr_sum[pk-symb_width_by4:pk+1]))/(data_ampli_sum[pk]**2), data_acorr_sum[pk]/(data_ampli_sum[pk]**2))
+				sts_index = pk
+	
+	if sts_index != 0:
+		cm.prGreen(f'STS peak detected = {sts_index}')
+		normalize_index = sts_index
+	else:
+		cm.prRed('Error: STS detection is failed (sts peaks are less than 8).')
+		normalize_index = 500
 
-'''
+	if plot_enable:
+		# plt.plot(data_xcorr, label='mag')
+		# plt.plot(peaks, data_xcorr[peaks], 'r.')
+		
+		plt.plot(data_xcorr, label='mag')
+		plt.plot(peaks, data_xcorr[peaks], 'r.')
+		plt.plot(data_acorr_sum/data_ampli_sum[normalize_index], label='acorr_5')
+		# plt.plot(peaks_new, (data_xcorr[peaks_new]/4)**2, 'g.')
+		# plt.plot(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'same'), label='acorr*8')
+		# plt.plot(np.correlate(data_acorr, np.ones(7*symb_width_by4), 'same'), label='acorr*7')
+		# plt.plot(np.abs(data_acorr)/1e2, label='acorr')
+		# plt.plot(np.abs(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'full'))/1e4, label='acorr*8')
+		# plt.plot((data_acorr_sum/np.roll(data_acorr_sum, symb_width_by4)-1)*1e3, label='acorr_rate')
+		# plt.plot(peaks[sts_index[0]], data_xcorr[peaks[sts_index[0]]], 'go')
+		plt.legend()
+		plt.grid()
+		plt.show()
 
+	return sts_index
+
+	# peaks_diff = np.diff(peaks)
+	# sts_index = np.array([i+1 for i in range(7, peaks_diff.size) if np.all(abs(peaks_diff[i-7:i+1]-symb_width_by4) < 3)])
+	# sts_index_num = 9
+	# if sts_index.size == 0:
+	# 	sts_index = np.array([i+1 for i in range(6, peaks_diff.size) if np.all(abs(peaks_diff[i-6:i+1]-symb_width_by4) < 3)])
+	# 	sts_index_num = 8
+	
+	# if plot_enable:
+	# 	print(f'{prominence=}, {width=}')
+	# 	print(properties["prominences"][:10])
+	# 	print(properties["widths"][:10])
+	# 	plt.plot(data_xcorr, label='mag')
+	# 	plt.plot(peaks, data_xcorr[peaks], 'r.')
+	# 	# plt.plot(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'same'), label='acorr*8')
+	# 	# plt.plot(np.correlate(data_acorr, np.ones(7*symb_width_by4), 'same'), label='acorr*7')
+	# 	# plt.plot(np.abs(data_acorr)/1e2, label='acorr')
+	# 	# plt.plot(np.abs(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'full'))/1e4, label='acorr*8')
+	# 	plt.plot(data_acorr_sum/1e2, label='acorr_5')
+	# 	# plt.plot(peaks[sts_index[0]], data_xcorr[peaks[sts_index[0]]], 'go')
+	# 	plt.legend()
+	# 	plt.grid()
+	# 	plt.show()
+	
+	# if sts_index.size != 0:
+	# 	cm.prGreen(f'number of sts peak detected = {sts_index_num}, last sts index = {peaks[sts_index[0]]}')
+	# 	return peaks[sts_index[0]]
+	
+	# cm.prRed('Error: STS detection is failed (sts peaks are less than 8).')
+	# return 0
+
+def sts_sync(data, symb_width, fs):
+
+	sts_index = peak_detect(data, symb_width, False)
+	
+	if sts_index == 0:
+		return np.empty((3, 0))
+	else:
+
+		data_sts_1 = data[sts_index-round((8*4-0.5)*symb_width) : sts_index-round((0*4-0.5)*symb_width)+1]
+		data_sts_2 = data[sts_index-round((9*4-0.5)*symb_width) : sts_index-round((1*4-0.5)*symb_width)+1]
+		acorr_data = data_sts_1*np.conjugate(data_sts_2)
+		freq_offset = np.angle(np.sum(acorr_data[round(2*symb_width):-round(2*symb_width)]))/round(4*symb_width)
+		
+		phase = np.angle(data)
+		phase_sync_1 = phase_correction(phase - freq_offset*np.arange(phase.size))
+		phase_offset = np.mean(phase_sync_1[sts_index-round(4*4*symb_width): sts_index+1: round(4*symb_width)])
+		phase_sync_2 = phase_correction(phase_sync_1 - phase_offset)
+		
+		data_sync = data*np.exp(-1j*(freq_offset*np.arange(data.size)+phase_offset))
+
+		ampli = np.abs(data)
+		ampli_sync = ampli/ampli[sts_index]
+		# ampli_avg = np.array([np.mean(ampli_sync[i-round(2*symb_width):i+1]) for i in range(round(2*symb_width), ampli_sync.size)])
+		# index_end_packet = np.nonzero(ampli_avg<0.1)[0]
+		# index_end_packet = index_end_packet[0] if index_end_packet.size != 0 else ampli_sync.size
+		
+		print(f'Sts detection(2):  index={sts_index}, freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, {phase_offset*180/np.pi:.3f} Deg')
+		# print(f'Sts detection:  index={sts_index}, freq_off = {freq_offset_old*1000*fs/(2*np.pi):.3f} KHz, {phase_offset*180/np.pi:.3f} Deg, end_index={sts_index+index_end_packet}')
+		
+		if False:
+			plt.plot(np.angle(acorr_data), label='acorr')
+			# plt.plot(ampli_avg, label='ampli_avg')
+			plt.legend()
+			plt.grid()
+			plt.show()
+
+		return phase_sync_2[sts_index:], ampli_sync[sts_index:], data_sync[sts_index:]
+	
+def lts_seq_detection(phase, symb_width):
+	index_range = np.arange(5*symb_width, 21*symb_width+1, symb_width)
+	lts_int_det = np.round(phase[index_range.astype(int)]*17/(2*np.pi)).astype('int')
+	
+	for k in range(16):
+		num_matched = np.size(np.nonzero(np.abs(lts_int_det - C.lts_int[k])<2))
+		# print(f'{lts_int_det}')
+		# print(f'{C.lts_int[k]}')
+		# print(f'lts detect for index:{k} is value: {num_matched}')
+		if num_matched >= 8:
+			lts_seq = k
+			cm.prCyan(f'LTS sequence detection result: {lts_seq=} {num_matched=}')
+			return lts_seq
+	
+	cm.prRed(f'LTS sequence detection is failed.')
+	# plt.plot(np.repeat(lts_int_det, symb_width), label = 'phase_int')
+	# plt.plot(np.repeat(C.lts_int[0], symb_width), label = 'lts_int')
+	# plt.plot(np.repeat(phase[5*symb_width:22*symb_width+1:symb_width], symb_width), label = 'phase')
+	# plt.plot(np.repeat(C.preamble_lts_phase[0], symb_width), label = 'lts')
+	# plt.legend()
+	# plt.grid()
+	# plt.show()
+	return -1
+	
+def lts_sync(phase, data, symb_width, fs):
+	
+	lts_seq = lts_seq_detection(phase, symb_width)
+
+	lts_range = np.arange((4+17+1)*symb_width, (4+17+17)*symb_width+1).astype('int')
+	lts_range_phase = np.arange((4+17+1)*symb_width, (4+17+17)*symb_width+1 ,symb_width).astype(int)
+	
+	freq = phase_correction(phase[lts_range]-phase[lts_range-round(17*symb_width)])/(17*symb_width)
+	freq_offset = np.mean(freq)
+	
+	phase_sync_1 = phase_correction(phase - freq_offset*np.arange(phase.size))
+	phase_offset = np.mean(phase_correction(phase_sync_1[lts_range_phase]-C.preamble_lts_phase[lts_seq]))
+	phase_sync_2 = phase_correction(phase_sync_1 - phase_offset)
+	
+	print(f'Lts detection(phase): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
+	
+	acorr_data = data[lts_range]*np.conjugate(data[lts_range-round(17*symb_width)])
+	freq_offset = np.angle(np.sum(acorr_data))/(17*symb_width)
+	
+	data_sync_3 = data*np.exp(-1j*freq_offset*np.arange(data.size))
+	# lts_seq = lts_seq if lts_seq != -1 else 0
+	phase_offset = np.angle(np.sum(data_sync_3[lts_range_phase]*np.conjugate(C.preamble_lts[lts_seq])))
+	data_sync = data_sync_3*np.exp(-1j*phase_offset)
+
+	print(f'Lts detection(new): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
+	
+	## another methode to calc freq offset in LTS, cross correlation of rx_sig and lts symboles
+	xcorr_data = data[lts_range_phase]*np.conjugate(C.preamble_lts[lts_seq])
+	freq_offset = np.mean(np.diff(np.angle(xcorr_data)))/symb_width
+	
+	print(f'Lts detection(new2): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
+	plt.plot(np.angle(xcorr_data))
+	plt.show()
+
+
+	if False:
+		plt.plot(freq, label='freq')
+		plt.plot(np.angle(acorr_data)/(17*symb_width), label='acorr')
+		plt.legend()
+		plt.grid()
+		plt.show()
+
+	return phase_sync_2[round(38*symb_width):], data_sync[round(38*symb_width):]
+
+def ts_sync(data, fs):
+	fsymb = 2.0 # HDT symbol rate is 2MSymb/s
+	symb_width = fs/fsymb
+
+	phase_sts, ampli, data_sts  = sts_sync(data, symb_width, fs)
+	phase_lts, data_lts = lts_sync(phase_sts, data_sts, symb_width, fs) if phase_sts.size > int(38*symb_width) else np.empty(0)
+	
+	return phase_lts, ampli[round(38*symb_width):]
+		
 def ts_sync_hdl(data, sample_rate):
 	baseband_symb_rate = 2 # HDT symbol rate is 2MSymb/s
 	symb_width = int(sample_rate/baseband_symb_rate)
@@ -45,8 +234,9 @@ def ts_sync_hdl(data, sample_rate):
 	mag_max_index = 0
 	mag_peak = np.empty(0, dtype='int')
 	sts_detection = 0
-	sts_freq_detection=0
 	lts_detection = 0
+	pits_detection = 0
+	sts_freq_detection=0
 	sts_index = 0
 	lts_index = 0
 	lts_symb_count = np.zeros(16, dtype='int')
@@ -61,6 +251,8 @@ def ts_sync_hdl(data, sample_rate):
 	acorr = np.zeros(data.size, dtype=data.dtype)
 	acorr_sum = np.zeros(data.size, dtype=data.dtype)
 	
+	n_sts_freq = 7
+	n_sts_phase = 9
 	for i, iq in enumerate(data):
 		## mixer
 		data_sync[i], freq = nco(iq, freq, -1*freq_off, -1*phase_off)
@@ -79,13 +271,13 @@ def ts_sync_hdl(data, sample_rate):
 				mag_peak = np.append(mag_peak, mag_max_index)
 				mag_max = 0
 		
-			if mag_peak.size>=7 and np.all(np.abs(np.diff(mag_peak)[-6:] - 4*symb_width) < 4) and np.all(mag[mag_peak[-6:-1]]/mag[mag_peak[-7:-2]]<1.2) and sts_freq_detection==0:
+			if  mag_peak.size>=n_sts_freq and np.all(np.abs(np.diff(mag_peak)[-n_sts_freq+1:] - 4*symb_width) < 4) and np.all(mag[mag_peak[-n_sts_freq+1:-1]]/mag[mag_peak[-n_sts_freq:-2]]<1.2) and sts_freq_detection==0:
 				sts_index = mag_peak[-1]
-				freq_off += np.mean(phase_diff[sts_index-int(6*4*symb_width)+symb_width:sts_index-symb_width])
+				freq_off += np.mean(phase_diff[sts_index-int((n_sts_freq-1)*4*symb_width)+symb_width:sts_index-symb_width])
 				sts_freq_detection=1
 				print(f'Sts detection(freq):  index={sts_index}, freq_off = {freq_off*1000*sample_rate/(2*np.pi):.3f} KHz')
 
-			if mag_peak.size>=9 and np.all(np.abs(np.diff(mag_peak)[-8:] - 4*symb_width) < 4) and np.all(mag[mag_peak[-8:-1]]/mag[mag_peak[-9:-2]]<1.2):
+			if mag_peak.size>=n_sts_phase and np.all(np.abs(np.diff(mag_peak)[-n_sts_phase+1:] - 4*symb_width) < 4) and np.all(mag[mag_peak[-n_sts_phase+1:-1]]/mag[mag_peak[-n_sts_phase:-2]]<1.2):
 				sts_index = mag_peak[-1]
 				phase_off += phase[sts_index]
 				sts_detection=1
@@ -99,16 +291,20 @@ def ts_sync_hdl(data, sample_rate):
 			phase_diff[i] = phase_correction(phase[i]-phase[i-17*symb_width])/(17*symb_width)
 			
 			## LTS sequence detection (during first 17 lts symbols)
-			if i> (sts_index+4*symb_width) and (i-sts_index)%symb_width == 0 and lts_seq==-1:
-				lts_int_det = np.round(phase[i]*17/(2*np.pi)).astype('int')
-				for k in range(16):
-					if lts_int_det == C.lts_int[k][int((i-sts_index)/symb_width)-5]:
-						lts_symb_count[k] += 1
-						if lts_symb_count[k] >= 10:
-							lts_seq = k
-							print(f'LTS sequence detection result: {lts_seq=}')
-				print(f'counters = {lts_symb_count}')
-
+			if lts_seq == -1 and i<=(sts_index + 21*symb_width):
+				if i> (sts_index+4*symb_width) and (i-sts_index)%symb_width == 0:
+					lts_int_det = np.round(phase[i]*17/(2*np.pi)).astype('int')
+					for k in range(16):
+						if lts_int_det == C.lts_int[k][int((i-sts_index)/symb_width)-5]:
+							lts_symb_count[k] += 1
+							if lts_symb_count[k] >= 8:
+								lts_seq = k
+								print(f'LTS sequence detection result: {lts_seq=}')
+					# print(f'counters = {lts_symb_count}')
+				elif i == (sts_index + 21*symb_width):
+					print(f'LTS sequence detection is failed.')
+					# lts_detection = 1
+				
 			## LTS detection XCP
 			if LTS_detection_type=="XCP":
 
@@ -119,9 +315,10 @@ def ts_sync_hdl(data, sample_rate):
 					print(f'Lts detection (freq): index={i}, freq_off = {freq_off*1000*sample_rate/(2*np.pi):.3f} KHz, {agc_rate=}, lts_freq_off = {freq_off_avg*1000*sample_rate/(2*np.pi):.3f} KHz')
 				
 				elif i == (sts_index+int((4+17+16)*symb_width)):
-					phase_off_avg = np.mean(phase[i-3*symb_width:i+1:symb_width]-C.preamble_lts_phase[lts_seq][-5:-1])
-					phase_off += phase_off_avg
-					print(f'Lts detection (phase): index={i}, lts_phase_off = {phase_off_avg*180/np.pi:.3f} Deg')
+					if lts_seq != -1:
+						phase_off_avg = np.mean(phase[i-3*symb_width:i+1:symb_width]-C.preamble_lts_phase[lts_seq][-5:-1])
+						phase_off += phase_off_avg
+						print(f'Lts detection (phase): index={i}, lts_phase_off = {phase_off_avg*180/np.pi:.3f} Deg')
 					lts_index = i+symb_width
 					lts_detection = 1
 					
@@ -178,26 +375,36 @@ def ts_sync_hdl(data, sample_rate):
 					freq_off += np.mean(phase_diff[lts_index-17*symb_width:lts_index+1])
 					phase_off += phase[lts_index]-C.preamble_lts_phase[lts_seq][-2]
 					print(f'Lts detection({LTS_detection_type}): index={lts_index}, freq_off = {freq_off*1000*sample_rate/(2*np.pi):.3f} KHz, phase_off = {phase_off*180/np.pi:.3f} Deg, {agc_rate=}')
-				
+		
+		## PITS detection
+		elif pits_detection==0 and lts_detection==1:
+			pits_limit = np.pi/10
+			if (i-sts_index)%symb_width == 0:
+				if np.abs(phase[i-3*symb_width]) < pits_limit and np.abs(phase[i-2*symb_width]) < pits_limit and np.abs(phase[i-1*symb_width]) > 9*pits_limit and np.abs(phase[i]) < pits_limit :
+					phase_off += np.mean([phase[i-3*symb_width], phase[i-2*symb_width], phase[i]])
+					print(f'PITS detection: index={i} phase={phase[i-3*symb_width:i+1:symb_width]} phase_off = {phase_off*180/np.pi:.3f} deg')
 	
 	#plt.plot(phase_diff*1000*sample_rate/(2*np.pi), label = 'diff_sts')
 	#plt.plot(phase_diff*1000*sample_rate/(2*np.pi), label = 'diff_lts')
 	#plt.plot(phase, label = 'phase')
 
+	# plt.plot(ampli*10, label = 'ampli')
 	# plt.plot(mag, label = 'mag')
 	# plt.plot(mag_diff, label = 'mag_diff')
-	# # plt.plot(mag_peak, mag[mag_peak], 'ro')
-	# # plt.plot(phase_diff*1.0e2, label = 'freq')
-	# plt.plot(phase, label = 'phase')
+	# plt.plot(mag_peak, mag[mag_peak], 'ro')
+	
+	plt.plot(phase_diff*1.0e2, label = 'freq')
+	plt.plot(phase, label = 'phase')
 	# plt.plot(np.hstack([np.zeros(sts_index+4*symb_width+8), np.tile(np.repeat(C.preamble_lts_phase[lts_seq], symb_width), 2)]), label = 'lts_int')
-	# plt.legend()
-	# plt.grid()
-	# plt.show()
+	
+	plt.legend()
+	plt.grid()
+	plt.show()
 	
 	#plt.plot(data_sync[1350:].real, data_sync[1350:].imag, 'ro')
 	#plt.show()
 
-	return 	data_sync[lts_index:]/agc_rate
+	return 	phase[lts_index:], ampli[lts_index:]/agc_rate
 
 class sync:
 
@@ -429,7 +636,8 @@ class sync:
 		plt.legend(['real', 'imag', 'phase', 'ampli'])
 		plt.grid()
 		plt.show()
-	
+		
+		import RfModel as rf
 		data_mixer_1 = rf.Mixer(data, -1*np.mean(freq_offset), -1*phase_offset)
 
 		#######################
@@ -515,6 +723,7 @@ class sync:
 		teta_sts = teta[amp_cc>4e8]
 		freq_offset = np.mean(teta_sts[:corr_delay])/(2*np.pi*corr_delay)
 		print(freq_offset)
+		import RfModel as rf
 		data_2 = rf.Mixer(data, -1*freq_offset, -1*np.pi)
 	
 		plt.plot(xcorr.real)

@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import msvcrt
+import datetime
 
 import Spectrum as sp
+import IOs
 import Pluto as pl
 
 if __name__=="__main__":
@@ -25,10 +27,10 @@ if __name__=="__main__":
 			c = c.lower()
 
 			if c == 'r':
-				[samples, fs] = mPluto.Read(5.0e6, 5.0e6, 868.0e6, 50.0, int(2e6))
+				[samples, fs] = mPluto.Read(4.0e6, 4.0e6, 2404.0e6, 30.0, int(20e6))
 				print('sample freq: ', fs, 'sample size: ', samples.size, 'sample min/max: ', samples.min(), samples.max())
-				sp.fftPlot(samples.real, n=1, fs=fs)
-				np.save('testPluto', samples)
+				sp.fftPlot(samples, fs=fs)
+				np.save('pluto_capture_'+str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')), samples)
 
 			elif c == 't':
 				t = np.arange(10000)/10.0e6
@@ -54,15 +56,16 @@ if __name__=="__main__":
 				np.save('testPluto', rxSamples)
 
 			elif c == 'd':
-				rxSamples = np.load('testPluto.npy')
+				filename = IOs.get_file_from_path('./', extension='npy', def_file=0)
+				rxSamples = np.load(filename)
 				print('data size = ', rxSamples.shape)
-				fs = 3.0e6
-				rxSamples = np.multiply(rxSamples, np.exp((np.arange(rxSamples.size)*(-2j)*np.pi*120.0e3/fs)+0.06287))
+				fs = 4.0e6
+				# rxSamples = np.multiply(rxSamples, np.exp((np.arange(rxSamples.size)*(-2j)*np.pi*120.0e3/fs)+0.06287))
 
-				sp.fftPlot(rxSamples.real, n=1, fs=fs)
-				sp.specPlot(rxSamples, fs=fs)
-				plt.plot(rxSamples[:10000])
-				plt.show()
+				# sp.fftPlot(rxSamples.real, n=1, fs=fs)
+				sp.specPlot(rxSamples[int(3e6):int(7e6)], fs=fs)
+				# plt.plot(rxSamples[:10000])
+				# plt.show()
 
 			elif c == 's':
 				mPluto.DDS()

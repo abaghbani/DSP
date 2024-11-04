@@ -42,6 +42,7 @@
     <Compile Include="IOs\csvFile.py" />
     <Compile Include="IOs\sdrFile.py" />
     <Compile Include="IOs\sigmfFile.py" />
+    <Compile Include="IOs\tools.py" />
     <Compile Include="IOs\__init__.py" />
     <Compile Include="LPWAN\LoRa\__init__.py" />
     <Compile Include="Ofdm\OfdmSynchronization.py" />

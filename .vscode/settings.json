@@ -3,5 +3,28 @@
     "python.autoComplete.extraPaths": ["${workspaceFolder}/Lib/"],
     "terminal.integrated.env.windows": {"PYTHONPATH":"${workspaceFolder}/Lib/"},
     "terminal.integrated.env.osx": {"PYTHONPATH":"${workspaceFolder}/Lib/"},
-    "terminal.integrated.env.linux": {"PYTHONPATH":"${workspaceFolder}/Lib/"}
+    "terminal.integrated.env.linux": {"PYTHONPATH":"${workspaceFolder}/Lib/"},
+    "workbench.colorCustomizations": 
+    {
+        "terminal.background":"#14144b",
+        // "terminalCursor.background":"#D0D0D0",
+        // "terminalCursor.foreground":"#D0D0D0",
+        "terminal.foreground": "#c5f01a",
+        "terminal.ansiBlack": "#282a36",
+        "terminal.ansiRed": "#ff5c57",
+        "terminal.ansiGreen": "#5af78e",
+        "terminal.ansiYellow": "#f3f99d",
+        "terminal.ansiBlue": "#57c7ff",
+        "terminal.ansiMagenta": "#ff6ac1",
+        "terminal.ansiCyan": "#9aedfe",
+        "terminal.ansiWhite": "#f1f1f0",
+        "terminal.ansiBrightBlack": "#686868",
+        "terminal.ansiBrightRed": "#ff5c57",
+        "terminal.ansiBrightGreen": "#5af78e",
+        "terminal.ansiBrightYellow": "#f3f99d",
+        "terminal.ansiBrightBlue": "#57c7ff",
+        "terminal.ansiBrightMagenta": "#ff6ac1",
+        "terminal.ansiBrightCyan": "#9aedfe",
+        "terminal.ansiBrightWhite": "#eff0eb"
+    }
 }

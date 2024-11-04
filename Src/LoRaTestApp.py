@@ -78,9 +78,6 @@ def PlutoCommand():
 
 if __name__=="__main__":
 	
-	print('S: Specgram of sampled data')
-	print('H: Histogram to Jpeg of sampled data')
-	print('A: FFT plot')
 	print('L: LoRa receiver')
 	print('M: LoRa modem')
 	print('N: read matfile')
@@ -95,19 +92,7 @@ if __name__=="__main__":
 			c = msvcrt.getch().decode("utf-8")
 			print(c)
 			c = c.lower()
-			if c == 's':
-				[fs, dataI, dataQ] = readWaveFile(filename)
-				specPlot(dataI+1j*dataQ, fs=fs)
-				
-			elif c == 'h':
-				[fs, dataI, dataQ] = readWaveFile(filename)
-				histogram2jpeg(dataI+1j*dataQ)
-				
-			elif c == 'a':
-				[fs, dataI, dataQ] = readWaveFile(filename)
-				fftPlot(dataI+1j*dataQ, fs=fs)
-				
-			elif c == 'l':
+			if c == 'l':
 				[fs, dataI, dataQ] = readWaveFile(filename)
 				[dataI, dataQ, fs] = LoRaFilterBank(dataI, dataQ, fs, Bw=125.0e3, fMix=-100.0e3, downSamplingRate=1)
 				specPlot(dataI+1j*dataQ, fs=fs)

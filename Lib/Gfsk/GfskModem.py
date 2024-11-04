@@ -57,23 +57,26 @@ def CompareData(txData, freq, rssi, data):
 		print('Preamble is not detected')
 
 
-def GfskModem(channel, bit_number, rate, snr, channel_filter, saving_enable=False):
-	payload_len = bit_number//8
-	payload = np.array(np.random.rand(payload_len)*256, dtype=np.uint8)
+def GfskModem(channel, byte_number, rate, snr, channel_filter):
+	payload = np.array(np.random.rand(byte_number)*256, dtype=np.uint8)
 
 	IfSig = GfskTransmitter(payload, channel, rate, snr)
 
 	lnaGain = (2**14-1)/np.abs(IfSig).max()
 	adcData = (IfSig*lnaGain).astype('int16')
 
-	if saving_enable:
-		fp = np.memmap('gfskData.bttraw', mode='w+', dtype=np.dtype('<h'), shape=(1,adcData.size))
-		fp[:] = adcData[:]
-	
-	print('transmit bit number=',payload.size)
-	print('ADC Data: {} samples'.format(adcData.size))
-	print('ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0]))
+	print(f'ADC Data: {adcData.size} samples, Min = {adcData.min()}, Max = {adcData.max()}, type={type(adcData[0])}')
 
 	(freq, rssi, rx_data) = GfskReceiver(adcData, channel, channel_filter)
 
 	CompareData(payload, freq, rssi, rx_data)
+
+	return adcData
+
+def gfsk_modem_baseband(byte_number, rate, snr):
+	Fs = 15.0e6
+	payload = np.array(np.random.rand(byte_number)*256, dtype=np.uint8)
+	baseband = Gfsk.Modulation(payload, Fs)
+	payload_extracted = Gfsk.Demodulation(baseband, Fs)
+
+

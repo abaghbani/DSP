@@ -16,9 +16,6 @@ import sounddevice as sdev
 
 if __name__=="__main__":
 	
-	print('S: Specgram of sampled data')
-	print('H: Histogram to Jpeg of sampled data')
-	print('A: FFT plot')
 	print('C: THD test')
 	print('W: Wav file generator')
 	print('X: Exit')
@@ -31,15 +28,7 @@ if __name__=="__main__":
 			c = msvcrt.getch().decode("utf-8")
 			print(c)
 			c = c.lower()
-			if c == 's':
-				[fs, dataI, dataQ] = IOs.readWaveFile(filename)
-				sp.specPlot(dataI+1j*dataQ, fs=fs)
-				
-			elif c == 'a':
-				[fs, dataI, dataQ] = IOs.readWaveFile(filename)
-				sp.fftPlot(dataI+1j*dataQ, fs=fs)
-				
-			elif c == 'c':
+			if c == 'c':
 				fs = 1000
 				t = np.arange(0,1, 1/fs)
 				x = 2*np.cos(2*np.pi*100*t)+0.01*np.cos(2*np.pi*200*t)+0.005*np.cos(2*np.pi*300*t)

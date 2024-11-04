@@ -25,9 +25,6 @@ if __name__=="__main__":
 	print('C: read csv file')
 	print('D: Debugging')
 	print('======================================')
-	print('S: Specgram of sampled data')
-	print('H: Histogram to Jpeg of sampled data')
-	print('A: FFT plot')
 	print('X: Exit')
 	print('>> ')
 
@@ -111,19 +108,6 @@ if __name__=="__main__":
 				plt.plot(ch4, label='ch4')
 				plt.legend(loc='best')
 				plt.show()
-				
-			elif c == 's':
-				adcData = IOs.readRawFile(filename)
-				sp.specPlot(adcData)
-				
-			elif c == 'h':
-				adcData = IOs.readRawFile(filename)
-				sp.histogram2jpeg(adcData)
-				
-			elif c == 'a':
-				adcData = IOs.readRawFile(filename)
-				adcData = np.multiply(adcData, np.cos((np.arange(adcData.size)*2*np.pi*120.0e+6/240.0e+6)+0.06287))
-				sp.fftPlot(adcData, fs = 240)
 
 			elif c == 'x':
 				break

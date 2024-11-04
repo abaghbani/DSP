@@ -1,9 +1,11 @@
 import numpy as np
 import scipy.signal as signal
+import scipy.io as sio
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 import msvcrt
-import os
 import logging as log
+import datetime
 
 import Spectrum as sp
 import Filter as fd
@@ -11,13 +13,15 @@ import IOs
 import Common as cm
 import ClockRecovery as cr
 import RfModel as rf
+import ChannelFilter as cf
 
 import QAM
 import Ofdm
 
 '''
 ########################
-### Python float format:
+### string format:
+### https://docs.python.org/3/library/string.html#format-examples
 
 3.1415926	{:.2f}	3.14	Format float 2 decimal places
 3.1415926	{:+.2f}	+3.14	Format float 2 decimal places with sign
@@ -32,11 +36,15 @@ import Ofdm
 11			{:11d}	     11	Right-aligned (default, width 10)
 11			{:<11d}	11		Left-aligned (width 10)
 11			{:^11d}	  11	Center aligned (width 10)
+42			{0:x}	2a		hex format
+42			{0:#x}	0x2a	hex format
+42			{0:o}	52		oct format
+42			{0:#o}	0o52	oct format
+42			{0:b}	101010	bin format
+42			{0:#b}	0b101010bin format
 
 ########################
 '''
-
-
 
 if __name__=="__main__":
 	
@@ -50,9 +58,6 @@ if __name__=="__main__":
 	print('W: Ofdm modem')	
 	print('Y: Ofdm receiver - SDR samples')	
 	print('Z: Ofdm receiver - Bv1 samples')	
-	print('S: Specgram of sampled data')
-	print('H: Histogram to Jpeg of sampled data')
-	print('A: FFT plot')
 	print('U: Pulse shaping design')
 	print('L: LTS sequences')
 	print('D: Debugging')
@@ -60,21 +65,23 @@ if __name__=="__main__":
 	print('>> ')
 
 	path = 'D:/Documents/Samples/QAM/'
-	filename = 'QamData.bin'
 
 	while True:
 		if msvcrt.kbhit():
 			c = msvcrt.getch().decode("utf-8")
-			print(c)
+			cm.prRedbgGreen('Command <<'+str(c)+'>> is running:')
 			c = c.lower()
 
 			if c == 'm':
-				adcData = QAM.QamModem(30, 100, QAM.Constant.ModulationType.QAM16, 40)
-				IOs.writeRawFile('./output/qamData.bin', adcData)
-			
+				snr = float(input('snr value (50dB*) = ').strip() or "50.0")
+				# adcData = QAM.QamModem(20, 60, 1, QAM.Constant.ModulationType.TEST_PSK4, snr)
+				# adcData = QAM.QamModem(20, 60, 1, QAM.Constant.ModulationType.TEST_PSK8, snr)
+				adcData = QAM.QamModem(20, 60, 1, QAM.Constant.ModulationType.TEST_QAM16, snr)
+				# IOs.writeRawFile('./qam_modem_' + str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))+'.bin', adcData)
+
 			elif c == 'o':
-				payload = (np.random.rand(100)*256).astype(np.uint8)
-				txBaseband, fs = QAM.modulation(payload, QAM.Constant.ModulationType.QAM16)
+				snr = float(input('snr value (50dB*) = ').strip() or "50.0")
+				adcData = QAM.qam_modem_baseband(60, 1, QAM.Constant.ModulationType.TEST_QAM16, snr)
 	
 				tx_upsampled = rf.UpSampling(txBaseband, 15)
 	
@@ -97,33 +104,19 @@ if __name__=="__main__":
 			
 			elif c == 'w':
 				adcData = Ofdm.OfdmModem(30, 100, Ofdm.Constant.ModulationType.QAM64, 55)
-				#IOs.writeRawFile('./output/ofdmData.bin', adcData)
+				IOs.writeRawFile('./ofdm_modem_' + str(datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))+'.bin', adcData)
 			
 			elif c == 'y':
+				filename = IOs.get_file_from_path(path+'Wifi/', def_file=0)
 				adcData = IOs.readRawFile(filename)
 				data_in = adcData[0::2]+1j*adcData[1::2]
-				fs = 20.0
-				
-				sp.fftPlot(data_in, fs=fs)
-				sp.specPlot(data_in, fs=fs)
 				Ofdm.Demodulation(data_in, 20.0)
 
 			elif c == 'z':
+				filename = IOs.get_file_from_path(path+'Wifi/', def_file=0)
 				adcData = IOs.readRawFile(filename)
 				adcDataNoGain = adcData[240*10:240*(10+200)]*2
 				Ofdm.OfdmReceiver(adcDataNoGain, 20)
-
-			elif c == 's':
-				adcData = IOs.readRawFile(filename)
-				sp.specPlot(adcData)
-				
-			elif c == 'h':
-				adcData = IOs.readRawFile(filename)
-				sp.histogram2jpeg(adcData)
-				
-			elif c == 'a':
-				adcData = IOs.readRawFile(filename)
-				sp.fftPlot(adcData)				
 
 			elif c == 'u':
 				# pulse shaping

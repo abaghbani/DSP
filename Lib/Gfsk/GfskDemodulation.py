@@ -75,36 +75,6 @@ def FrequencyOffsetCalc(freq, mode, Fs):
 					# ( (freq[i-2*SymbolCount]>=0) ^ (freq[i-2*SymbolCount-1]>=0) ) else 0
 	return offset
 
-def ClockRecovery(freq, mode, Fs):
-	dataLength = freq.size
-	SymbolCount = Fs/2.0
-	clkRecCount = np.zeros(dataLength, dtype='int8')
-	valid = np.zeros(dataLength, dtype=bool)
-	data = np.zeros(dataLength, dtype=np.int8)
-	correction = 0
-	for i in range(dataLength):
-		clkRecCount[i] = 0 if ((freq[i]>=0) ^ (freq[i-1]>=0)) or clkRecCount[i-1] == int(SymbolCount*2)-1 or correction == 1 else clkRecCount[i-1]+1
-		correction = 1 if ((freq[i]>=0) ^ (freq[i-1]>=0)) and (clkRecCount[i-1] == 3 or clkRecCount[i-1] == 4 or clkRecCount[i-1] == 10 or clkRecCount[i-1] == 11) else 0
-		if mode[i]==0: ## halfrate mode (1mb/s)
-			valid[i] = 1 if clkRecCount[i] == int(SymbolCount) else 0
-		elif mode[i]==1: ## fullrate (2Mb/s)
-			valid[i] = 1 if (clkRecCount[i]%int(SymbolCount)) == int(SymbolCount/2) else 0
-		data[i] = (freq[i]>=0)
-	
-	rxData = data[np.nonzero(valid)]
-	print(rxData)
-		
-	plt.plot(freq)
-	#plt.plot(offset)
-	#plt.plot(valid, '.')
-	#plt.plot(data)
-	#plt.plot(clkRecCount)
-	#plt.legend(['freq', 'offset', 'valid', 'data', 'counter'], loc='best')
-	plt.grid()
-	plt.show()
-
-	return rxData
-
 def phase_correction(phase):
 	return (phase+np.pi)%(2*np.pi)-np.pi
 
@@ -127,11 +97,10 @@ def Demodulation(data, Fs):
 	present = SignalDetection(freq)
 	present_mag = (mag>55)
 
-	freq -= FrequencyOffsetCalc(freq, mode, Fs)
-	##rxData = ClockRecovery(freq, mode, Fs)
-	#bit, bit_index = cr.CrossZero(freq, 7.5, 7.0)
-	#bit, bit_index = cr.EarlyLate(freq, 15, 0, 1)
-	bit, bit_index = cr.EarlyLate_noninteger(freq, 7.5, 1)
+	offset = FrequencyOffsetCalc(freq, mode, Fs)
+	freq_offset = freq - offset
+	bit, bit_index = cr.EarlyLate(freq_offset, 7.5)
+	bit = np.floor(bit+0.5)
 	
 	plt.plot(bit_index, bit, 'bo')
 	plt.plot(freq)
@@ -143,3 +112,35 @@ def Demodulation(data, Fs):
 	bit = np.where(bit>=0, 1, -1)
 
 	return freq, mag, bit
+
+class unused:
+	def ClockRecovery(freq, mode, Fs):
+		dataLength = freq.size
+		SymbolCount = Fs/2.0
+		clkRecCount = np.zeros(dataLength, dtype='int8')
+		valid = np.zeros(dataLength, dtype=bool)
+		data = np.zeros(dataLength, dtype=np.int8)
+		correction = 0
+		for i in range(dataLength):
+			clkRecCount[i] = 0 if ((freq[i]>=0) ^ (freq[i-1]>=0)) or clkRecCount[i-1] == int(SymbolCount*2)-1 or correction == 1 else clkRecCount[i-1]+1
+			correction = 1 if ((freq[i]>=0) ^ (freq[i-1]>=0)) and (clkRecCount[i-1] == 3 or clkRecCount[i-1] == 4 or clkRecCount[i-1] == 10 or clkRecCount[i-1] == 11) else 0
+			if mode[i]==0: ## halfrate mode (1mb/s)
+				valid[i] = 1 if clkRecCount[i] == int(SymbolCount) else 0
+			elif mode[i]==1: ## fullrate (2Mb/s)
+				valid[i] = 1 if (clkRecCount[i]%int(SymbolCount)) == int(SymbolCount/2) else 0
+			data[i] = (freq[i]>=0)
+		
+		rxData = data[np.nonzero(valid)]
+		print(rxData)
+			
+		plt.plot(freq)
+		#plt.plot(offset)
+		#plt.plot(valid, '.')
+		#plt.plot(data)
+		#plt.plot(clkRecCount)
+		#plt.legend(['freq', 'offset', 'valid', 'data', 'counter'], loc='best')
+		plt.grid()
+		plt.show()
+
+		return rxData
+

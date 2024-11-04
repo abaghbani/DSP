@@ -82,20 +82,6 @@ if __name__=="__main__":
 			elif c == 'm':
 				Wpan.WpanModem(15, 10, 50)
 
-			elif c == 's':
-				adcData = IOs.readRawFile(filename, 12)
-				#sp.fftPlot(baseband.real, baseband.imag, n=2, fs=Fs)
-				sp.specPlot(adcData)
-				
-			elif c == 'h':
-				adcData = IOs.readRawFile(filename)
-				sp.histogram2jpeg(adcData)
-				
-			#elif c == 'a':
-			#	adcData = IOs.readRawFile(filename)
-			#	adcData = np.multiply(adcData, np.cos((np.arange(adcData.size)*2*np.pi*120.0e+6/240.0e+6)+0.06287))
-			#	sp.fftPlot(adcData, fs = 240)
-				
 			elif c == 'x':
 				break
 			print()

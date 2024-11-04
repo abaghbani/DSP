@@ -3,8 +3,8 @@ import numpy as np
 class Constant:
 
 	BPSK_QPSK_table = {
-		(0) : -1,
-		(1) : +1
+		(0) : +1,
+		(1) : -1
 	}
 
 	QAM16_2bits_table = {
@@ -44,18 +44,21 @@ class Constant:
 		ZC_lts = lambda u, L: [np.exp((1j*np.pi*(-(u+1)*n*(n+1) + 2*self.lts_sequence[u]))/L) for n in range(L)]
 		ZC_lts_seq = lambda L: [ZC_lts(u, L) for u in range(self.lts_sequence.size)]
 		self.preamble_lts = np.array(ZC_lts_seq(17))
-		self.preamble_lts_phase = np.array(np.angle(ZC_lts_seq(17)))
+		self.preamble_lts_phase = np.angle(self.preamble_lts)
 		lts = np.array([[(-(u+1)*n*(n+1)+2*self.lts_sequence[u])%34 for n in range(17)] for u in range(16)]) # 2pi/(pi/17) = 34
 		lts[lts > 17] -= 34
 		self.lts_int = lts//2
 
-
 	class ModulationType:
-		BPSK = 1
-		QPSK = 2
-		PSK8 = 3
-		QAM16 = 4
-		QAM64 = 5
+		Unknown = 0
+		TEST_PSK4 = 1
+		TEST_PSK8 = 2
+		TEST_QAM16 = 3
+		PSK4 = 4
+		PSK8 = 5
+		QAM16 = 6
+		HDT = 7
+
 
 class Const_unused:
 

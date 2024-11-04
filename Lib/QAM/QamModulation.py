@@ -23,9 +23,9 @@ def modulationBPSK(bit_frame):
 	symbol = np.hstack([C.BPSK_QPSK_table[bits] for bits in bit_frame])
 	return symbol
 
-def modulationQPSK(bit_frame):
+def modulationPSK4(bit_frame):
 	packet_frame_2bits = bit_frame[:(bit_frame.size//2)*2].reshape((-1,2))
-	symbol = np.hstack([C.BPSK_QPSK_table[bits[0]]+1j*C.BPSK_QPSK_table[bits[1]] for bits in packet_frame_2bits])
+	symbol = np.hstack([C.BPSK_QPSK_table[bits[1]]+1j*C.BPSK_QPSK_table[bits[0]] for bits in packet_frame_2bits])
 	return symbol
 
 def modulation8PSK(bit_frame):
@@ -49,17 +49,15 @@ def modulation(payload, block_number, type, lts_seq=0):
 	payload_bit = np.unpackbits(payload_frame, bitorder='little')
 	fs = 2.0		## baseband sample rate is 2MS/s
 
-	if type == C.ModulationType.BPSK:
-		modulatedData = modulationBPSK(payload_bit)
-	elif type == C.ModulationType.QPSK:
-		modulatedData = modulationQPSK(payload_bit)
-	elif type == C.ModulationType.PSK8:
+	if type == C.ModulationType.TEST_PSK4:
+		modulatedData = modulationPSK4(payload_bit)
+	elif type == C.ModulationType.TEST_PSK8:
 		modulatedData = modulation8PSK(payload_bit)
-	elif type == C.ModulationType.QAM16:
+	elif type == C.ModulationType.TEST_QAM16:
 		modulatedData = modulationQAM16(payload_bit)
-	elif type == C.ModulationType.QAM64:
-		modulatedData = modulationQAM64(payload_bit)
 	else:
+		print(f'this case should be complete...')
+		print(f'Demodulation is failed.')
 		modulatedData = 0
 
 	ret_val = np.hstack([np.zeros(16), carrier(np.pi/4, 16), training_sequence(9, 2, lts_seq), modulatedData])
