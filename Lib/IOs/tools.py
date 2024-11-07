@@ -1,4 +1,5 @@
 import os
+import platform
 
 def get_file_from_path(path, extension='.bin', def_file=0):
 	logFolderContent = os.listdir(path)
@@ -13,3 +14,22 @@ def get_file_from_path(path, extension='.bin', def_file=0):
 	file_num = def_file if file_num == '' else int(file_num)
 	print(logFolderContent[file_num])
 	return path+logFolderContent[file_num]
+
+def get_console_key():
+	print('Press a command:')
+	if "Windows" in platform.system():
+		import msvcrt
+		while True:
+			if msvcrt.kbhit():
+				break
+		key = msvcrt.getch().decode("utf-8")
+		print(key)
+		key = key.lower()
+		return key
+	else:
+		while True:
+			key = input()
+			if key.isascii:
+				break
+		key = key.lower()
+		return key[0]
