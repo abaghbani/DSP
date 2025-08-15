@@ -21,6 +21,24 @@ def cicFilter(inSig):
         y[1]=midSig[i]+y[0]+y[1]
         y[0]=midSig[i]+y[0]
     
+def cicFilter_upsample(inSig, r):
+    assert np.log2(r).is_integer(), 'upsample rate must be power of 2'
+    n = int(np.log2(r)+1)
+    x = np.zeros(n)
+    y = np.zeros(n)
+    midSig = np.zeros(r*inSig.size)
+    outSig = np.zeros(r*inSig.size)
+
+    for i in range(inSig.size):
+        midSig[i*r]=inSig[i]-np.sum(x)
+        for j in range(n):
+            x[n-1-j] = inSig[i]-np.sum(x[0:n-1-j])
+
+    for i in range(r*inSig.size):
+        outSig[i]=midSig[i]+np.sum(y)
+        for j in range(n):
+            y[n-1-j] = midSig[i]+np.sum(y[0:n-j])
+    
     return outSig
 
 def Downsampling_CIC_n3(inSig, down_rate=4):

@@ -18,10 +18,10 @@ def PhaseOffset(data, offset):
 
 def WhiteNoise(data, SNRdB):
 	signal_power = np.mean(np.abs(data)**2)
-	# calculate noise power based on signal power and SNR
-	sigma2 = signal_power * 10**(-SNRdB/10)
-	#print ("RX Signal power: %.4f, Noise power: %.4f" % (signal_power, sigma2))
-	return np.sqrt(sigma2/2) * (np.random.randn(data.size)-0.5)
+	noise_power = signal_power * 10**(-SNRdB/10)
+	noise = np.random.normal(0, np.sqrt(noise_power/2), data.size) + 1j * np.random.normal(0, np.sqrt(noise_power/2), data.size)
+
+	return noise
 
 def ChannelResponce(data):
 	# the impulse response of the wireless channel

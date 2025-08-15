@@ -7,7 +7,10 @@ import ClockRecovery as cr
 from .Constant import *
 C = Constant()
 
-def ModeDetection(freq):
+def ModeDetection(freq, fs):
+	if fs==7.5:
+		return np.zeros(freq.size, dtype=np.uint8)
+	else:
 	mode = np.zeros(6, dtype=np.uint8)
 	mode_avg = np.zeros(freq.size, dtype=np.uint8)
 	for i in range(2, freq.size):
@@ -31,9 +34,10 @@ def SignalDetection(freq):
 	
 	return detection
 
-def FrequencyOffsetCalc(freq, mode, Fs):
+def FrequencyOffsetCalc(freq, mode, Fs, plot_enable=False):
 	dataLength = freq.size
 	SymbolCount = Fs/2.0
+	print("SymbolCount: ", SymbolCount, "Fs: ", Fs)
 	freqAvrage = np.zeros(dataLength, dtype='int')
 	syncDetection = np.zeros(dataLength, dtype=bool)
 	syncDetectionHalf = np.zeros(dataLength, dtype=bool)
@@ -61,17 +65,18 @@ def FrequencyOffsetCalc(freq, mode, Fs):
 		# LrDet[i] = 1 if ((freq[i]>Limit and freq[i-1*SymbolCount]>Limit and freq[i-3*SymbolCount]<-Limit and freq[i-4*SymbolCount]<-Limit) or \
 						# (freq[i]<-Limit and freq[i-1*SymbolCount]<-Limit and freq[i-3*SymbolCount]>Limit and freq[i-4*SymbolCount]>Limit)) and \
 	
-	#plt.plot(freq)
-	#plt.plot(freqAvrage, '.')
-	##plt.plot(syncDetection, '.')
-	#plt.plot(syncDetectionHalf)
-	##plt.plot(xcorr, '-.')
-	#plt.plot(xcorrHalf)
-	#plt.plot(offset)
-	##plt.plot(mode)
-	#plt.legend(['freq', 'avg', 'syncdet', 'xcorr', 'offset', 'mode'], loc='best')
-	#plt.grid()
-	#plt.show()
+	if plot_enable:
+		plt.plot(freq)
+		plt.plot(freqAvrage, '.')
+		# plt.plot(syncDetection*10)
+		plt.plot(syncDetectionHalf)
+		# plt.plot(xcorr)
+		plt.plot(xcorrHalf)
+		plt.plot(offset)
+		plt.plot(mode)
+		plt.legend(['freq', 'avg', 'syncdet', 'xcorr', 'offset', 'mode'], loc='best')
+		plt.grid()
+		plt.show()
 					# ( (freq[i-2*SymbolCount]>=0) ^ (freq[i-2*SymbolCount-1]>=0) ) else 0
 	return offset
 
@@ -93,13 +98,13 @@ def Demodulation(data, Fs):
 	# avraging over 4 samples
 	freq = np.convolve([1, 1, 1, 1], freq, 'same')
 
-	mode = ModeDetection(freq)
+	mode = ModeDetection(freq, Fs)
 	present = SignalDetection(freq)
 	present_mag = (mag>55)
 
-	offset = FrequencyOffsetCalc(freq, mode, Fs)
-	freq_offset = freq - offset
-	bit, bit_index = cr.EarlyLate(freq_offset, 7.5)
+	offset = FrequencyOffsetCalc(freq, mode, Fs, False)
+	freq_sync = freq - offset
+	bit, bit_index = cr.EarlyLate(freq_sync, Fs)
 	bit = np.floor(bit+0.5)
 	
 	plt.plot(bit_index, bit, 'bo')

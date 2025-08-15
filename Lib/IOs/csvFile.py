@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-def readCsvFile(filename):
-	ret_val = np.loadtxt(filename, delimiter=",")
+def readCsvFile(filename, delimiter=','):
+	ret_val = np.loadtxt(filename, delimiter = delimiter)
 	return ret_val
 
 def read_csv(filename):

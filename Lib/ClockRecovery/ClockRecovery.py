@@ -108,3 +108,22 @@ def Earlylate_withOffset(data, period, delta=1, plot_data=False):
 		plt.show()
 
 	return bit_out, bit_index
+
+def gardner(samples, sps, alpha):
+	mu = np.zeros(len(samples) // sps)
+	for i in range(len(mu)):
+		k = i * sps
+		mu[i] = (samples[k + sps // 2 - 1] - samples[k + sps // 2 + 1]) * np.conj(samples[k + sps // 2])
+
+	phase_adjustment = 0
+	adjusted_samples = np.zeros(len(samples) // sps, dtype=complex)
+	for i in range(len(mu)):
+		k = i * sps
+		phase_adjustment += alpha * mu[i]
+		interp_index = k + sps // 2 + phase_adjustment
+		if 0 <= interp_index < len(samples):
+			adjusted_samples[i] = samples[int(interp_index)]
+		else:
+			adjusted_samples[i] = samples[k + sps // 2]  # Fallback to middle sample if out of bounds
+	
+	return adjusted_samples

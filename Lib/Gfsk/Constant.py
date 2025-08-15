@@ -16,7 +16,7 @@ class Constant:
 	
 	## Gfsk demodulator
 	ModeRateThreshold = 11 # fix me! dependancy of sample rate (this is for 15Msps)
-	FrequencyAvrageMaximum = 10
+	FrequencyAvrageMaximum = 20
 	
 def CrcCalculation(payload):
 	# crc polinomial : x^16 + x^12 + x^5 + 1

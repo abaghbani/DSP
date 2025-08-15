@@ -16,7 +16,7 @@ def get_file_from_path(path, extension='.bin', def_file=0):
 	return path+logFolderContent[file_num]
 
 def get_console_key():
-	print('Press a command:')
+	print('\n','='*30,'\n', 'Press a command:', sep='')
 	if "Windows" in platform.system():
 		import msvcrt
 		while True:

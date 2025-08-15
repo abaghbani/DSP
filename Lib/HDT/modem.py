@@ -7,21 +7,22 @@ import ChannelFilter as cf
 import Filter as fd
 import RfModel as rf
 
-from .QamModulation import *
-from .QamDemodulation import *
-from .Constant import *
+from .modulation import *
+from .demodulation import *
+from .constant import *
 C = Constant()
 
-def QamTransmitter(channel, payload, block_number, mod_type, snr):
+def transmitter(channel, payload, block_number, mod_type, snr):
 	lts_seq = int(np.random.random(1)*16)
 	txBaseband, fs = modulation(payload, block_number, mod_type, lts_seq)
-
+	
 	# first step of upsampling (2Msps -> 16Msps)
 	data_upsampled = txBaseband.repeat(8)
-	b = fd.rrc(141, 0.4, 2.4, 16.0)
+	# b = fd.rrc(141, 0.4, 2.4, 16.0)
+	b = fd.rrc_filter(0.4, 64, 8)
 	txBaseband = np.convolve(b, data_upsampled, 'same')
 	fs *= 8
-	
+
 	# second step of upsampling (16Msps -> 240Msps)
 	fs_RF = cf.Constant.AdcSamplingFrequency
 	data_upsampled = txBaseband.repeat(fs_RF//fs)
@@ -31,7 +32,7 @@ def QamTransmitter(channel, payload, block_number, mod_type, snr):
 	freq_offset = (np.random.random(1)-0.5)/5	# offset -0.1 to +0.1 (-100KHz to +100KHz)
 	phase_offset = (np.random.random(1)-0.5)*2*np.pi # offset -pi to +pi
 	tx_mixer = rf.Mixer(tx_upsampled, cf.Constant.IfMixerFrequency+channel+freq_offset, phase_offset, fs_RF)
-	tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, snr)
+	tx_sig = tx_mixer.real + np.real(rf.WhiteNoise(tx_mixer, snr))
 
 	print(f'transmitter: payload={payload.size=} bytes, freq_offset={float(freq_offset*1000):.3f} KHz, phase_offset={phase_offset*180/np.pi} Deg, {lts_seq=}')
 	#plt.plot(txBaseband.real, txBaseband.imag, 'bo')
@@ -45,14 +46,15 @@ def QamTransmitter(channel, payload, block_number, mod_type, snr):
 
 	return tx_sig
 
-def QamReceiver(adcSamples, channel, modulation_type):
+def receiver(adcSamples, channel, modulation_type):
 	(data4M, data2M, data1M) = cf.ChannelDecimate(adcSamples)
 	(dataI, dataQ, fs) = cf.ChannelFilter(data4M, data2M, data1M, channel, cf.Constant.ChannelFilterType.Hdt2M)
-	Demodulation(dataI+1j*dataQ, fs, modulation_type)
+
+	demodulation(dataI+1j*dataQ, fs, modulation_type)
 	
-def QamModem(channel, byte_number, block_number, modulation_type, snr):
+def modem(channel, byte_number, block_number, modulation_type, snr):
 	payload = (np.random.rand(byte_number)*256).astype(np.uint8)
-	IfSig = QamTransmitter(channel, payload, block_number, modulation_type, snr)
+	IfSig = transmitter(channel, payload, block_number, modulation_type, snr)
 
 	lnaGain = 0.9*(2**15)/np.abs(IfSig).max()
 	adcData = (IfSig*lnaGain).astype('int16')
@@ -61,13 +63,13 @@ def QamModem(channel, byte_number, block_number, modulation_type, snr):
 
 	#print(f'transmit payload : {[hex(val)[2:] for val in payload]}')
 
-	QamReceiver(adcData, channel, modulation_type)
+	receiver(adcData, channel, modulation_type)
 
 	return adcData
 
-def qam_modem_baseband(byte_number, block_number, mod_type, snr):
+def modem_baseband(byte_number, block_number, mod_type, snr):
 	payload = (np.random.rand(byte_number)*256).astype(np.uint8)
-	lts_seq = int(np.random.random(1)*16)
+	lts_seq = 0 #int(np.random.random(1)*16)
 	txBaseband, fs = modulation(payload, block_number, mod_type, lts_seq)
 
 	fs *= 15
@@ -78,9 +80,9 @@ def qam_modem_baseband(byte_number, block_number, mod_type, snr):
 
 	tx_mixer = rf.Mixer(tx_upsampled, freq_offset, phase_offset, fs)
 	noise = rf.WhiteNoise(tx_mixer, snr)
-	tx_sig = tx_mixer + (noise+1j*noise)
+	sig = tx_mixer + (noise+1j*noise)
 
-	tx_sig *= (2**16)/np.abs(tx_sig).max()
-	rx_sig = (tx_sig.real//2)+1j*(tx_sig.imag//2)
-	print(f'transmitter: payload={payload.size=} bytes, freq_offset={float(freq_offset*1000):.3f} KHz, phase_offset={float(phase_offset*180/np.pi):.2f} Deg, {lts_seq=}')
-	Demodulation(tx_sig, fs, mod_type)
+	print(f'transmitter: payload={payload.size=} bytes, freq_offset={float(freq_offset*1000):.3f} KHz, {lts_seq=}')
+	demodulation(sig, fs, mod_type)
+
+	return sig

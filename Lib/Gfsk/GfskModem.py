@@ -74,9 +74,9 @@ def GfskModem(channel, byte_number, rate, snr, channel_filter):
 	return adcData
 
 def gfsk_modem_baseband(byte_number, rate, snr):
-	Fs = 15.0e6
+	# Fs = 15.0e6
 	payload = np.array(np.random.rand(byte_number)*256, dtype=np.uint8)
-	baseband = Gfsk.Modulation(payload, Fs)
-	payload_extracted = Gfsk.Demodulation(baseband, Fs)
+	baseband, fs = Modulation(payload)
+	payload_extracted = Demodulation(baseband, fs)
 
 

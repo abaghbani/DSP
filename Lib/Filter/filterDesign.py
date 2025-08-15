@@ -14,7 +14,7 @@ def MidpassFilter(n, f_low, f_high, fs):
 	a = signal.firwin(n, cutoff = f_low/(fs/2), window = 'blackmanharris')
 	b = - signal.firwin(n, cutoff = f_high/(fs/2), window = 'blackmanharris')
 	b[n//2] = b[n//2] + 1
-	d = -(a+b);
+	d = -(a+b)
 	d[n//2] = d[n//2] + 1
 	return d
 
@@ -32,6 +32,15 @@ def MidpassCalc(b_lowpass, b_highpass):
 	n = b_lowpass.size
 	temp = 1.0*b_highpass
 	temp[n//2] += 1
-	d = -(b_lowpass+temp);
+	d = -(b_lowpass+temp)
 	d[n//2] += 1
 	return d
+
+def redesign_filter(filter_coef, f_band, f_unband, r, num_taps, fs):
+	w, h = signal.freqz(filter_coef)
+	freq = w*fs/(2*np.pi)
+	i = int(np.argwhere(freq > f_band)[0])
+	i = i if i%2 == 0 else i-1
+	filter_new = signal.firls(num_taps, np.concatenate((freq[:i]*r, [f_unband, fs/2])), np.concatenate((np.abs(h[:i]), [0, 0])), fs=fs)
+	
+	return filter_new

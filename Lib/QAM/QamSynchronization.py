@@ -20,15 +20,6 @@ def max_detect(data, symb_width):
 	peaks = np.unique(np.hstack(np.column_stack((peak_1[:peak_2.size], peak_2))))
 	return peaks
 
-# def max_detect_2(data, symb_width):
-# 	prominence = 0.15*4*np.max(data.real)
-# 	width = round(symb_width)-2
-# 	peaks, properties = signal.find_peaks(data, height=0, distance=symb_width_by4-3, prominence=prominence, width=width)
-# 	print(f'{prominence=}, {width=}')
-# 	print(properties["prominences"][:10])
-# 	print(properties["widths"][:10])
-
-
 def peak_detect(data, symb_width, plot_enable=True):
 	symb_width_by2 = round(symb_width*2)
 	symb_width_by3 = round(symb_width*3)
@@ -56,54 +47,14 @@ def peak_detect(data, symb_width, plot_enable=True):
 		normalize_index = 500
 
 	if plot_enable:
-		# plt.plot(data_xcorr, label='mag')
-		# plt.plot(peaks, data_xcorr[peaks], 'r.')
-		
 		plt.plot(data_xcorr, label='mag')
 		plt.plot(peaks, data_xcorr[peaks], 'r.')
 		plt.plot(data_acorr_sum/data_ampli_sum[normalize_index], label='acorr_5')
-		# plt.plot(peaks_new, (data_xcorr[peaks_new]/4)**2, 'g.')
-		# plt.plot(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'same'), label='acorr*8')
-		# plt.plot(np.correlate(data_acorr, np.ones(7*symb_width_by4), 'same'), label='acorr*7')
-		# plt.plot(np.abs(data_acorr)/1e2, label='acorr')
-		# plt.plot(np.abs(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'full'))/1e4, label='acorr*8')
-		# plt.plot((data_acorr_sum/np.roll(data_acorr_sum, symb_width_by4)-1)*1e3, label='acorr_rate')
-		# plt.plot(peaks[sts_index[0]], data_xcorr[peaks[sts_index[0]]], 'go')
 		plt.legend()
 		plt.grid()
 		plt.show()
 
 	return sts_index
-
-	# peaks_diff = np.diff(peaks)
-	# sts_index = np.array([i+1 for i in range(7, peaks_diff.size) if np.all(abs(peaks_diff[i-7:i+1]-symb_width_by4) < 3)])
-	# sts_index_num = 9
-	# if sts_index.size == 0:
-	# 	sts_index = np.array([i+1 for i in range(6, peaks_diff.size) if np.all(abs(peaks_diff[i-6:i+1]-symb_width_by4) < 3)])
-	# 	sts_index_num = 8
-	
-	# if plot_enable:
-	# 	print(f'{prominence=}, {width=}')
-	# 	print(properties["prominences"][:10])
-	# 	print(properties["widths"][:10])
-	# 	plt.plot(data_xcorr, label='mag')
-	# 	plt.plot(peaks, data_xcorr[peaks], 'r.')
-	# 	# plt.plot(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'same'), label='acorr*8')
-	# 	# plt.plot(np.correlate(data_acorr, np.ones(7*symb_width_by4), 'same'), label='acorr*7')
-	# 	# plt.plot(np.abs(data_acorr)/1e2, label='acorr')
-	# 	# plt.plot(np.abs(np.correlate(data_acorr, np.ones(8*symb_width_by4), 'full'))/1e4, label='acorr*8')
-	# 	plt.plot(data_acorr_sum/1e2, label='acorr_5')
-	# 	# plt.plot(peaks[sts_index[0]], data_xcorr[peaks[sts_index[0]]], 'go')
-	# 	plt.legend()
-	# 	plt.grid()
-	# 	plt.show()
-	
-	# if sts_index.size != 0:
-	# 	cm.prGreen(f'number of sts peak detected = {sts_index_num}, last sts index = {peaks[sts_index[0]]}')
-	# 	return peaks[sts_index[0]]
-	
-	# cm.prRed('Error: STS detection is failed (sts peaks are less than 8).')
-	# return 0
 
 def sts_sync(data, symb_width, fs):
 
@@ -127,16 +78,11 @@ def sts_sync(data, symb_width, fs):
 
 		ampli = np.abs(data)
 		ampli_sync = ampli/ampli[sts_index]
-		# ampli_avg = np.array([np.mean(ampli_sync[i-round(2*symb_width):i+1]) for i in range(round(2*symb_width), ampli_sync.size)])
-		# index_end_packet = np.nonzero(ampli_avg<0.1)[0]
-		# index_end_packet = index_end_packet[0] if index_end_packet.size != 0 else ampli_sync.size
 		
 		print(f'Sts detection(2):  index={sts_index}, freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, {phase_offset*180/np.pi:.3f} Deg')
-		# print(f'Sts detection:  index={sts_index}, freq_off = {freq_offset_old*1000*fs/(2*np.pi):.3f} KHz, {phase_offset*180/np.pi:.3f} Deg, end_index={sts_index+index_end_packet}')
 		
 		if False:
 			plt.plot(np.angle(acorr_data), label='acorr')
-			# plt.plot(ampli_avg, label='ampli_avg')
 			plt.legend()
 			plt.grid()
 			plt.show()
@@ -158,53 +104,58 @@ def lts_seq_detection(phase, symb_width):
 			return lts_seq
 	
 	cm.prRed(f'LTS sequence detection is failed.')
-	# plt.plot(np.repeat(lts_int_det, symb_width), label = 'phase_int')
-	# plt.plot(np.repeat(C.lts_int[0], symb_width), label = 'lts_int')
-	# plt.plot(np.repeat(phase[5*symb_width:22*symb_width+1:symb_width], symb_width), label = 'phase')
-	# plt.plot(np.repeat(C.preamble_lts_phase[0], symb_width), label = 'lts')
-	# plt.legend()
-	# plt.grid()
-	# plt.show()
+
+	if False:
+		plt.plot(np.repeat(lts_int_det, symb_width), label = 'phase_int')
+		plt.plot(np.repeat(C.lts_int[0], symb_width), label = 'lts_int')
+		plt.plot(np.repeat(phase[5*symb_width:22*symb_width+1:symb_width], symb_width), label = 'phase')
+		plt.plot(np.repeat(C.preamble_lts_phase[0], symb_width), label = 'lts')
+		plt.legend()
+		plt.grid()
+		plt.show()
+		
 	return -1
 	
 def lts_sync(phase, data, symb_width, fs):
 	
 	lts_seq = lts_seq_detection(phase, symb_width)
 
-	lts_range = np.arange((4+17+1)*symb_width, (4+17+17)*symb_width+1).astype('int')
-	lts_range_phase = np.arange((4+17+1)*symb_width, (4+17+17)*symb_width+1 ,symb_width).astype(int)
+	lts_1_range = np.arange((4+1)*symb_width, (4+17-2)*symb_width+1).astype('int')
+	lts_2_range = np.arange((4+18)*symb_width, (4+34-2)*symb_width+1).astype('int')
+	lts_1_range_center = np.arange((4+1)*symb_width, (4+17-2)*symb_width+1 ,symb_width).astype('int')
+	lts_2_range_center = np.arange((4+18)*symb_width, (4+34-2)*symb_width+1 ,symb_width).astype('int')
 	
-	freq = phase_correction(phase[lts_range]-phase[lts_range-round(17*symb_width)])/(17*symb_width)
+	## auto correlation phase samples
+	freq = phase_correction(phase[lts_2_range]-phase[lts_1_range])/(17*symb_width)
 	freq_offset = np.mean(freq)
-	
 	phase_sync_1 = phase_correction(phase - freq_offset*np.arange(phase.size))
-	phase_offset = np.mean(phase_correction(phase_sync_1[lts_range_phase]-C.preamble_lts_phase[lts_seq]))
+	phase_offset = np.mean(phase_correction(phase_sync_1[lts_2_range_center]-C.preamble_lts_phase[lts_seq][:-2]))
 	phase_sync_2 = phase_correction(phase_sync_1 - phase_offset)
 	
 	print(f'Lts detection(phase): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
 	
-	acorr_data = data[lts_range]*np.conjugate(data[lts_range-round(17*symb_width)])
+	## auto correlation IQ samples
+	acorr_data = data[lts_2_range]*np.conjugate(data[lts_1_range])
 	freq_offset = np.angle(np.sum(acorr_data))/(17*symb_width)
-	
 	data_sync_3 = data*np.exp(-1j*freq_offset*np.arange(data.size))
-	# lts_seq = lts_seq if lts_seq != -1 else 0
-	phase_offset = np.angle(np.sum(data_sync_3[lts_range_phase]*np.conjugate(C.preamble_lts[lts_seq])))
+	phase_offset = np.angle(np.sum(data_sync_3[lts_2_range_center]*np.conjugate(C.preamble_lts[lts_seq][:-2])))
 	data_sync = data_sync_3*np.exp(-1j*phase_offset)
 
 	print(f'Lts detection(new): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
 	
-	## another methode to calc freq offset in LTS, cross correlation of rx_sig and lts symboles
-	xcorr_data = data[lts_range_phase]*np.conjugate(C.preamble_lts[lts_seq])
-	freq_offset = np.mean(np.diff(np.angle(xcorr_data)))/symb_width
+	## cross correlation IQ samples
+	if int(symb_width) == symb_width:
+		lts_1_range = np.arange((4+1-0.5)*symb_width, (4+17-2+0.5)*symb_width).astype('int')
+		lts_2_range = np.arange((4+18-0.5)*symb_width, (4+34-2+0.5)*symb_width).astype('int')
+		xcorr_lts_1 = data[lts_1_range]*np.conjugate(np.repeat(C.preamble_lts[lts_seq][:-2], int(symb_width)))
+		xcorr_lts_2 = data[lts_2_range]*np.conjugate(np.repeat(C.preamble_lts[lts_seq][:-2], int(symb_width)))
+		freq_offset = np.angle(np.sum(xcorr_lts_2)*np.conjugate(np.sum(xcorr_lts_1)))/(17*symb_width)
 	
-	print(f'Lts detection(new2): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz, phase_off = {phase_offset*180/np.pi:.3f} Deg')
-	plt.plot(np.angle(xcorr_data))
-	plt.show()
-
+		print(f'Lts detection(new2): freq_off = {freq_offset*1000*fs/(2*np.pi):.3f} KHz')
 
 	if False:
-		plt.plot(freq, label='freq')
-		plt.plot(np.angle(acorr_data)/(17*symb_width), label='acorr')
+		plt.plot(freq*1e6*fs/(2*np.pi), label='freq')
+		plt.plot((np.angle(acorr_data)/(17*symb_width))*1e6*fs/(2*np.pi), label='acorr')
 		plt.legend()
 		plt.grid()
 		plt.show()

@@ -68,5 +68,28 @@ def raised_root_cosine(N, upsample, alpha):
 	h_rrc[sample_i] = np.sin(np.pi * ti * (1 - alpha)) \
 					+ 4 * alpha * ti * np.cos(np.pi * ti * (1 + alpha))
 	h_rrc[sample_i] /= (np.pi * ti * (1 - (4 * alpha * ti) ** 2))
+	
+	return h_rrc				
+
+def rrc_filter(beta, n_tap, oversampling):
+	if n_tap % 2 == 0:
+		time_index = np.linspace(-n_tap/2, n_tap/2, n_tap, endpoint=False)/oversampling
+	else:
+		time_index = np.linspace(-(n_tap-1)/2, (n_tap-1)/2, n_tap)/oversampling
+
+	# Root raised cosine formula
+	h_rrc = np.zeros_like(time_index)
+	for i, t in enumerate(time_index):
+		if t == 0.0:
+			h_rrc[i] = 1.0 - beta + (4 * beta / np.pi)
+		elif abs(t) == 1 / (4 * beta):
+			h_rrc[i] = (beta / np.sqrt(2)) * (
+				((1 + 2 / np.pi) * (np.sin(np.pi / (4 * beta)))) +
+				((1 - 2 / np.pi) * (np.cos(np.pi / (4 * beta))))
+			)
+		else:
+			numerator = np.sin(np.pi * t * (1 - beta)) + 4 * beta * t * np.cos(np.pi * t * (1 + beta))
+			denominator = np.pi * t * (1 - (4 * beta * t)**2)
+			h_rrc[i] = numerator / denominator
 
 	return h_rrc				
