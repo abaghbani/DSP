@@ -24,7 +24,7 @@ def writeSigmfFile(fileName, data, sample_rate):
 		global_info = {
 			smf.SigMFFile.DATATYPE_KEY: smf.utils.get_data_type_str(data),
 			smf.SigMFFile.SAMPLE_RATE_KEY: sample_rate,
-			smf.SigMFFile.AUTHOR_KEY: 'Ellisys.com',
+			smf.SigMFFile.AUTHOR_KEY: 'Test_SDR.com',
 			smf.SigMFFile.DESCRIPTION_KEY: 'this is a test sample file.',
 			smf.SigMFFile.VERSION_KEY: smf.__version__,
 		}

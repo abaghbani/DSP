@@ -50,7 +50,7 @@ tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, 10)
 # IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.Dpsk4MBasebandFS, basebandBW=C.Dpsk4MBasebandBW, noiseLevel=20)
 
 #############################################
-## data saving as binary (Ellisys format)
+## data saving as binary file
 #############################################
 if Transmitter_Enable:
 	adcData = IfSig.astype('int16')

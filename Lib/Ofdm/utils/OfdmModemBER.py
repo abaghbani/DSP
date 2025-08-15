@@ -18,7 +18,7 @@ if Transmitter_Enable:
 	txBaseband = OfdmQamModulation(C, payload)
 	IfSig = OfdmRfTransceiver(C, txBaseband, channel, basebandFS=C.ofdmBasebandFS, basebandBW=C.ofdmBasebandBw, SNRdb=5)
 	############################################
-	# data saving as binary (Ellisys format)
+	# data saving as binary file
 	############################################
 	adcData = IfSig*200
 	adcData = adcData.astype('int16')

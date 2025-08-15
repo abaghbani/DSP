@@ -21,7 +21,7 @@ txBaseband = GfskModulation(GfskSymbolStream)
 IfSig = RfTransceiver(txBaseband, channel, basebandFS=C.Gfsk2MBasebandFS, basebandBW=C.Gfsk2MBasebandBW, SNRdb=10)
 
 #############################################
-## data saving as binary (Ellisys format)
+## data saving as binary file
 #############################################
 if Transmitter_Enable:
 	adcData = IfSig.astype('int16')

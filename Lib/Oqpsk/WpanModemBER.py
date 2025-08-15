@@ -43,7 +43,7 @@ txBaseband = WpanModulation(C, DpskSymbolStream)
 IfSig = RfTransceiver(C, txBaseband, channel, basebandFS=C.WpanBasebandFS, basebandBW=C.WpanBasebandBW, SNRdb=10)
 
 #############################################
-## data saving as binary (Ellisys format)
+## data saving as binary file
 #############################################
 if Transmitter_Enable:
 	adcData = IfSig.astype('int16')
