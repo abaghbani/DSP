@@ -17,6 +17,7 @@ if __name__=="__main__":
 
 	print('A: process debug data')
 	print('M: Modem')
+	print('B: Baseband Modem')
 	print('X: Exit')
 	print('>> ')
 
@@ -45,7 +46,7 @@ if __name__=="__main__":
 				## receive
 				Wpan.Demodulation(baseband_rx, Fs)
 
-			if c == 'b':  ## transmit/receive with rf model
+			if c == 'd':  ## transmit/receive with rf model
 				bit_number = 4
 				Fs = 100.0e6
 				payload = np.array(np.random.rand(bit_number)*256, dtype=np.uint8)
@@ -81,6 +82,9 @@ if __name__=="__main__":
 
 			elif c == 'm':
 				Wpan.modem(15, 10, 50)
+
+			elif c == 'b':
+				Wpan.modem_baseband(10, 50)
 
 			elif c == 'x':
 				break
