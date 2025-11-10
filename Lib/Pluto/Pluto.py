@@ -27,6 +27,23 @@ class Pluto:
 	def info(self):
 		print(self.sdr)
 	
+	def init(self, fs, bw, tx_lo, rx_lo):
+		self.sdr.sample_rate = int(fs)
+		self.sdr.tx_rf_bandwidth = int(bw)
+		self.sdr.rx_rf_bandwidth = int(bw)
+		self.sdr.tx_lo = int(tx_lo)
+		self.sdr.rx_lo = int(rx_lo)
+
+		self.sdr.tx_hardwaregain_chan0 = 0.0 #valid range is -90 to 0 dB
+		self.sdr.gain_control_mode_chan0 = "slow_attack"
+
+	def transmit(self, samples, loop_en):
+		# if ch0 is enable: first 2 bytes is ch0.real, next 2 bytes is ch0.imag (12-bits-signed)
+		# if ch1 is enable: third 2 bytes is ch1.real, next 2 bytes is ch1.imag (12-bits-signed)
+		self.sdr.tx_destroy_buffer()
+		self.sdr.tx_cyclic_buffer = loop_en
+		self.sdr.tx(samples)
+
 	def Read(self, SampleRate, BandWidth, LoFrequency, Gain, SampleNumber):
 		self.sdr.sample_rate = int(SampleRate)
 		self.sdr.rx_rf_bandwidth = int(BandWidth)
@@ -54,7 +71,8 @@ class Pluto:
 		self.sdr.tx_rf_bandwidth = int(BandWidth)
 		self.sdr.tx_lo = int(LoFrequency)
 		self.sdr.tx_hardwaregain_chan0 = Gain
-		self.sdr.tx_cyclic_buffer = True
+		self.sdr.tx_cyclic_buffer = False
+		print(self.sdr)
 		start_time = time.time()
 		self.sdr.tx(Samples)
 		end_time = time.time()
@@ -64,7 +82,7 @@ class Pluto:
 			self.sdr.tx_destroy_buffer()	
 		
 		fs = self.sdr.sample_rate
-		print('sample freq: ', fs, 'transmitting over the air time(s): ', end_time-start_time)
+		print(f'sample freq: , {fs}, transmitting over the air time(s): , {end_time-start_time:.3f}')
 		return fs
 	
 	def ReadWrite(self, SampleRate, BandWidth, LoFrequency, txGain, rxGain, txSamples, rxSampleNumber):
