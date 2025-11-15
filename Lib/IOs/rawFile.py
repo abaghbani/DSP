@@ -15,12 +15,13 @@ def writeRawFile(fileName, data):
 
 def readAdcDUMP(fileName, count=-1, offset=0):
 	data = np.fromfile(fileName, dtype='uint8', count=count, offset=offset)
-	data = data[1:1+int(((data.size-1)//3)*3)]
+	data = data[:int(((data.size)//3)*3)]
 	fst_uint8, mid_uint8, lst_uint8 = np.reshape(data, (data.shape[0] // 3, 3)).astype(np.int16).T
 	fst_uint12 = (fst_uint8) + ((mid_uint8 % 16) << 8)
 	snd_uint12 = (mid_uint8 >> 4)  + (lst_uint8 << 4)
 	adcData = np.reshape(np.concatenate((fst_uint12[:, None], snd_uint12[:, None]), axis=1), 2 * fst_uint12.shape[0])
 	adcData = (adcData<<(16-12))>>(16-12)
+	print('ADC Data: {} samples'.format(adcData.size))
 	print('ADC Data Min/Max: ',adcData.min(),adcData.max(), type(adcData[0]))
 	return adcData
 

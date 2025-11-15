@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 import RfModel as rf
 import ChannelFilter as cf
+import Spectrum as sp
 
 from .GfskModulation import *
 from .GfskDemodulation import *
@@ -16,6 +17,7 @@ def GfskTransmitter(payload, channel, rate, snr):
 	tx_mixer = rf.Mixer(tx_upsampled, cf.Constant().IfMixerFrequency+(channel), 0, Fs_RF)
 	tx_sig = tx_mixer.real + rf.WhiteNoise(tx_mixer, snr)
 	#IfSig = RfTransceiver(txBaseband, channel, rate, snr)
+	sp.specPlot(tx_sig)
 	
 	return tx_sig
 

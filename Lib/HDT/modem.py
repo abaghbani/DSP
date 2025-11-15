@@ -14,20 +14,18 @@ C = Constant()
 
 def transmitter(channel, payload, block_number, mod_type, snr):
 	lts_seq = int(np.random.random(1)*16)
-	txBaseband, fs = modulation(payload, block_number, mod_type, lts_seq)
-	
+	txBaseband, _ = modulation_old(payload, block_number, mod_type, lts_seq)
+	print(txBaseband.size)
 	# first step of upsampling (2Msps -> 16Msps)
-	data_upsampled = txBaseband.repeat(8)
 	# b = fd.rrc(141, 0.4, 2.4, 16.0)
-	b = fd.rrc_filter(0.4, 64, 8)
-	txBaseband = np.convolve(b, data_upsampled, 'same')
-	fs *= 8
+	fs=16.0
+	b = fd.rrc_filter(0.4, 64, fs/2)
+	txBaseband = signal.upfirdn(b, txBaseband, up=fs//2)
 
 	# second step of upsampling (16Msps -> 240Msps)
 	fs_RF = cf.Constant.AdcSamplingFrequency
-	data_upsampled = txBaseband.repeat(fs_RF//fs)
 	b = signal.firls(141, np.array([0., 4.0-0.5, 4.0+0.5, fs_RF/2]), [1, 1.4, 0, 0], fs=fs_RF)
-	tx_upsampled = np.convolve(b, data_upsampled, mode='same')
+	tx_upsampled = signal.upfirdn(b, txBaseband, up=fs_RF//fs)
 	
 	freq_offset = (np.random.random(1)-0.5)/5	# offset -0.1 to +0.1 (-100KHz to +100KHz)
 	phase_offset = (np.random.random(1)-0.5)*2*np.pi # offset -pi to +pi
@@ -69,7 +67,7 @@ def modem(channel, byte_number, block_number, modulation_type, snr):
 
 def modem_baseband(byte_number, block_number, mod_type, snr):
 	payload = (np.random.rand(byte_number)*256).astype(np.uint8)
-	lts_seq = 0 #int(np.random.random(1)*16)
+	lts_seq = int(np.random.random(1)*16)
 	txBaseband, fs = modulation(payload, block_number, mod_type, lts_seq)
 
 	fs *= 15
@@ -80,7 +78,7 @@ def modem_baseband(byte_number, block_number, mod_type, snr):
 
 	tx_mixer = rf.Mixer(tx_upsampled, freq_offset, phase_offset, fs)
 	noise = rf.WhiteNoise(tx_mixer, snr)
-	sig = tx_mixer + (noise+1j*noise)
+	sig = tx_mixer + noise
 
 	print(f'transmitter: payload={payload.size=} bytes, freq_offset={float(freq_offset*1000):.3f} KHz, {lts_seq=}')
 	demodulation(sig, fs, mod_type)

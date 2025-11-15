@@ -8,72 +8,36 @@ import Common as cm
 from .constant import *
 C = Constant()
 
-def max_detect(data, symb_width):
-	interval = round(symb_width*4)
-	mag_1 = data[:(data.size//interval)*interval].reshape((-1, interval))
-	peak_1 = np.argmax(mag_1, axis=1)
-	peak_1 += interval*np.arange(peak_1.size)
-	mag_1 = data[interval//2:interval//2+(data.size//interval - 1)*interval].reshape((-1, interval))
-	peak_2 = np.argmax(mag_1, axis=1)
-	peak_2 += interval//2
-	peak_2 += interval*np.arange(peak_2.size)
-
-	peaks = np.unique(np.hstack((peak_1[:peak_2.size], peak_2)))
-	return peaks
-
 def peak_detect(data, symb_width, plot_enable=True):
 	symb_width_by2 = round(symb_width*2)
 	symb_width_by3 = round(symb_width*3)
 	symb_width_by4 = round(symb_width*4)
 
 	data_xcorr = np.array([magnitude_estimator(ts_xcorrolate([d3, d2, d1, d0], C.preamble_sts)) for d3, d2, d1, d0 in zip(np.roll(data, symb_width_by3), np.roll(data, symb_width_by2), np.roll(data, int(symb_width)), data)])	
-	peaks = max_detect(data_xcorr, symb_width)
-
-	sts_index = 0
-	peak_count = 0
+	data_peak = np.zeros(9*round(4*symb_width), dtype='int')
+	data_peak[round(4*symb_width)-1::round(4*symb_width)] = 1
+	xcorr_peak = np.zeros(data_xcorr.size)
+	for i in range(data_peak.size, data.size):
+		xcorr_peak[i-1] = np.sum(data_xcorr[i-data_peak.size:i]*data_peak)
 	
-	for i, pk_diff in enumerate(np.diff(peaks)):
-		if np.abs(pk_diff-symb_width_by4) < 6:
-			peak_count += 1
-			if peak_count >= 8:
-				sts_index = peaks[i+1]
-				break
-		else:
-			peak_count = 0
-		
-		if peak_count > 3:
-			cm.prRed(f'STS peak detected = {peaks[i+1]} (peak_count={peak_count}, pk_diff={pk_diff})')
-	
-	if sts_index != 0:
-		cm.prGreen(f'STS peak detected = {sts_index}')
-		normalize_index = sts_index
-	else:
-		cm.prRed('Error: STS detection is failed (sts peaks are less than 8).')
-		normalize_index = 500
+	peak_index, _ = signal.find_peaks(xcorr_peak, distance=round(4*symb_width)*8)
 
+	cm.prGreen(f'STS peak detected (new) = {peak_index[0]}')
 	if plot_enable:
-		plt.plot(data_xcorr, label='mag')
-		plt.plot(peaks, data_xcorr[peaks], 'r.')
-		plt.plot(sts_index, data_xcorr[sts_index], 'g.')
-		# plt.plot(data_acorr_sum/data_ampli_sum[normalize_index], label='acorr_5')
+		plt.plot(xcorr_peak, label='xcorr_peak')
+		plt.plot(peak_index, xcorr_peak[peak_index], 'r.')
 		plt.legend()
 		plt.grid()
 		plt.show()
 
-	return sts_index
+	return peak_index[0]
 
 def sts_detection(data, fs, plot_enable=True):
 
 	fsymb = 2.0 # HDT symbol rate is 2MSymb/s
 	symb_width = fs/fsymb
 
-	plt.plot(np.angle(data), label='phase')
-	plt.plot(np.abs(data), label='ampli')
-	plt.legend()
-	plt.grid()
-	plt.show()
-
-	sts_index = peak_detect(data, symb_width, True)
+	sts_index = peak_detect(data, symb_width, plot_enable)
 	
 	if sts_index == 0:
 		return np.empty((3, 0))

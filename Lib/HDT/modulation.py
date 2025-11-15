@@ -2,6 +2,7 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 
+from .bitprocess import *
 from .constant import *
 C = Constant()
 
@@ -44,7 +45,7 @@ def modulationQAM64(bit_frame):
 	symbol = np.hstack([C.QAM64_3bits_table[tuple(bits[0:3])]+1j*C.QAM64_3bits_table[tuple(bits[3:6])] for bits in packet_frame_6bits])
 	return symbol
 
-def modulation(payload, block_number, type, lts_seq=0):
+def modulation_old(payload, block_number, type, lts_seq=0):
 	crc = crc_calc(payload)
 	payload_frame = np.concatenate((np.array([0xa0, 0xa0, 0xa0, 0xa0, 0xa7], dtype=np.uint8), np.array([payload.size], dtype=np.uint8), payload, crc))
 	payload_bit = np.unpackbits(payload_frame, bitorder='little')
@@ -68,3 +69,30 @@ def modulation(payload, block_number, type, lts_seq=0):
 
 	ret_val = np.hstack([ret_val, carrier(np.pi/4, 8), np.zeros(16)])
 	return ret_val, fs
+
+def modulation(control, payload, type, block_number=1, lts_seq=0):
+
+	control_bit = np.unpackbits(control, bitorder='little')
+	bitstream = np.unpackbits(payload, bitorder='little')
+	whitened_bits = np.hstack([control_bit, hdt_whitener(bitstream, 0x7A7F)])
+	encoded_bits = hdt_encoder(whitened_bits)
+	payload_bit = hdt_puncturing(encoded_bits, 1)
+
+	if type == C.ModulationType.PSK4:
+		modulatedData = modulationPSK4(payload_bit)
+	elif type == C.ModulationType.PSK8:
+		modulatedData = modulation8PSK(payload_bit)
+	elif type == C.ModulationType.QAM16:
+		modulatedData = modulationQAM16(payload_bit)
+	else:
+		print(f'this case should be complete...')
+		print(f'Demodulation is failed.')
+		modulatedData = 0
+
+	ret_val = np.hstack([np.zeros(1600), carrier(np.pi/4, 16), training_sequence(9, 2, lts_seq), modulatedData])
+	if block_number > 1:
+		for i in range(block_number-1):
+			ret_val = np.hstack([ret_val, phy_int_training_sequence(6), modulatedData])
+
+	ret_val = np.hstack([ret_val, carrier(np.pi/4, 8), np.zeros(1600)])
+	return ret_val

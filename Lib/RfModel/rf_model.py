@@ -2,8 +2,10 @@ import numpy as np
 import scipy.signal as signal
 
 def UpSampling(data, rate):
-	data_upsampled = data.repeat(rate)
-	b = signal.firwin(141, 1/rate, fs=1)
+	data_upsampled = np.zeros(data.size*rate, dtype=type(data[0]))
+	data_upsampled[::rate] = data
+	b = signal.firwin(141, 1.0, fs=rate)
+	# return signal.upfirdn(b, data, up=rate)
 	return np.convolve(b, data_upsampled, mode='same')
 
 def Mixer(data, Fmix, Phase_offset, fs=1):

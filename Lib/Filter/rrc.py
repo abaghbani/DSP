@@ -71,7 +71,7 @@ def raised_root_cosine(N, upsample, alpha):
 	
 	return h_rrc				
 
-def rrc_filter(beta, n_tap, oversampling):
+def rrc_filter_old(beta, n_tap, oversampling):
 	if n_tap % 2 == 0:
 		time_index = np.linspace(-n_tap/2, n_tap/2, n_tap, endpoint=False)/oversampling
 	else:
@@ -93,3 +93,12 @@ def rrc_filter(beta, n_tap, oversampling):
 			h_rrc[i] = numerator / denominator
 
 	return h_rrc				
+
+def rrc_filter(beta, span, sps):
+	t = np.arange(-span/2, span/2 + 1/sps, 1/sps)
+	t = np.where(t == 0, 1e-10, t)  # avoid div by 0
+	numerator = np.sin(np.pi * t * (1 - beta)) + 4 * beta * t * np.cos(np.pi * t * (1 + beta))
+	denominator = np.pi * t * (1 - (4 * beta * t)**2)
+	h = numerator / denominator
+	h /= np.sqrt(np.sum(h**2))  # normalize energy
+	return h

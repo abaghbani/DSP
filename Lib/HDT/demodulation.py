@@ -122,6 +122,7 @@ def demod_qam_sync(phase, ampli, init_error = 0.0, sum_limit=0.85*np.pi/4, eta =
 	data_out = np.zeros(phase.size, dtype=type(phase[0]))
 	error_history = np.zeros(phase.size, dtype='float')
 	offset = init_error
+	error = init_error
 	
 	phase_centers = np.arange(-1, 2)*(np.pi/2)
 	for i, dd in enumerate(phase):
@@ -130,7 +131,7 @@ def demod_qam_sync(phase, ampli, init_error = 0.0, sum_limit=0.85*np.pi/4, eta =
 			error = phase_correction(d1-(2*np.digitize(d1, phase_centers)-3)*(np.pi/4))
 			if abs(error) < sum_limit:
 				offset += eta*error
-		error_history[i] = offset
+		error_history[i] = error
 		data_out[i] = d1
 
 	return data_out, error_history
@@ -143,16 +144,16 @@ def demodulation(data, fs, mod_type, save_enable=False):
 	# phase_recovered, ampli_recovered = clock_recovery(phase, ampli, fs, plot_enable=True)
 
 	phase_sts, ampli_sts, data_sts  = sts_detection(data, fs, plot_enable=False)
-	phase_recovered, ampli_recovered  = lts_detection(phase_sts, ampli_sts, data_sts, plot_enable=True)
+	phase_recovered, ampli_recovered  = lts_detection(phase_sts, ampli_sts, data_sts, plot_enable=False)
 
 	plt.figure(figsize=(6, 6))
 	plt.plot(ampli_recovered*np.cos(phase_recovered), ampli_recovered*np.sin(phase_recovered), 'r.')
 	plt.grid()
 	plt.show()
 
-	def ploting_result(ph, ampli, test, type):
+	def ploting_result(ph, ampli, test, type, len):
 		plt.figure(figsize=(6, 6))
-		plt.plot(ampli*np.cos(ph), ampli*np.sin(ph), 'r.')
+		plt.plot(ampli[:len]*np.cos(ph[:len]), ampli[:len]*np.sin(ph[:len]), 'r.')
 		if type == C.ModulationType.PSK4:
 			plt.plot(1.4*np.cos(np.arange(np.pi/4, 2*np.pi, np.pi/2)), 1.4*np.sin(np.arange(np.pi/4, 2*np.pi, np.pi/2)), 'bo')
 		elif type == C.ModulationType.PSK8:
@@ -161,7 +162,7 @@ def demodulation(data, fs, mod_type, save_enable=False):
 			plt.plot(*np.meshgrid(np.arange(-3, 4, 2), np.arange(-3, 4, 2)), 'bo')
 		plt.grid()
 		plt.show()
-		plt.plot(test)
+		plt.plot(test[:len])
 		plt.show()
 
 	if mod_type == C.ModulationType.PSK4:
@@ -176,7 +177,7 @@ def demodulation(data, fs, mod_type, save_enable=False):
 		test_packet_extraction(bit_stream)
 	elif mod_type == C.ModulationType.QAM16:
 		phase_recovered, test = demod_qam_sync(phase_recovered, ampli_recovered)
-		ploting_result(phase_recovered, ampli_recovered, test, mod_type)
+		ploting_result(phase_recovered, ampli_recovered, test, mod_type, 140)
 		bit_stream = demod_qam16(phase_recovered, ampli_recovered)
 		test_packet_extraction(bit_stream)
 	else:
