@@ -10,7 +10,7 @@ C = Constant()
 def ModeDetection(freq, fs):
 	if fs==7.5:
 		return np.zeros(freq.size, dtype=np.uint8)
-	else:
+	
 	mode = np.zeros(6, dtype=np.uint8)
 	mode_avg = np.zeros(freq.size, dtype=np.uint8)
 	for i in range(2, freq.size):
